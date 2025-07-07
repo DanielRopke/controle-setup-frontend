@@ -19,18 +19,21 @@ import DefeitosProgeo from './pages/DefeitosProgeo'
 import Login from './pages/Login'
 
 function App() {
+  // Estado para saber se está logado (inicializado via localStorage)
   const [logado, setLogado] = useState<boolean>(() => {
     return localStorage.getItem('logado') === 'true'
   })
 
   const navigate = useNavigate()
 
+  // Função para logar, atualizar estado e navegar para home
   const handleLogin = () => {
     setLogado(true)
     localStorage.setItem('logado', 'true')
     navigate('/home')
   }
 
+  // Sempre que "logado" mudar, redireciona para login se não estiver logado
   useEffect(() => {
     if (!logado) {
       navigate('/login')
@@ -39,7 +42,13 @@ function App() {
 
   return (
     <Routes>
+      {/* Rota para Login */}
       <Route path="/login" element={<Login onLogin={handleLogin} />} />
+
+      {/* Rota raiz que redireciona para /login ou /home conforme estado logado */}
+      <Route path="/" element={<Navigate to={logado ? "/home" : "/login"} replace />} />
+
+      {/* Rotas protegidas, visíveis só se estiver logado */}
       {logado ? (
         <>
           <Route path="/home" element={<Home />} />
@@ -55,9 +64,12 @@ function App() {
           <Route path="/prioridade-obras" element={<PrioridadeObras />} />
           <Route path="/mapa" element={<Mapa />} />
           <Route path="/defeitos-progeo" element={<DefeitosProgeo />} />
+
+          {/* Qualquer outro caminho redireciona para home */}
           <Route path="*" element={<Navigate to="/home" replace />} />
         </>
       ) : (
+        // Se não logado, qualquer outro caminho redireciona para login
         <Route path="*" element={<Navigate to="/login" replace />} />
       )}
     </Routes>
