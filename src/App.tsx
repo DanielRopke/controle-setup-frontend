@@ -19,36 +19,75 @@ import DefeitosProgeo from './pages/DefeitosProgeo'
 import Login from './pages/Login'
 
 function App() {
-  // Estado para saber se está logado (inicializado via localStorage)
   const [logado, setLogado] = useState<boolean>(() => {
     return localStorage.getItem('logado') === 'true'
   })
 
   const navigate = useNavigate()
 
-  // Função para logar, atualizar estado e navegar para home
   const handleLogin = () => {
     setLogado(true)
     localStorage.setItem('logado', 'true')
+    localStorage.setItem('ultimoAcesso', String(Date.now()))
     navigate('/home')
   }
 
-  // Sempre que "logado" mudar, redireciona para login se não estiver logado
+  const logout = () => {
+    setLogado(false)
+    localStorage.removeItem('logado')
+    localStorage.removeItem('ultimoAcesso')
+    navigate('/login')
+  }
+
+  // Redireciona se não estiver logado
   useEffect(() => {
     if (!logado) {
       navigate('/login')
     }
   }, [logado, navigate])
 
+  // Verifica expiração da sessão a cada 30s
+  useEffect(() => {
+    const intervalo = setInterval(() => {
+      const ultimo = Number(localStorage.getItem('ultimoAcesso'))
+      if (logado && ultimo && Date.now() - ultimo > 10 * 60 * 1000) {
+        logout()
+      }
+    }, 30 * 1000) // Verifica a cada 30 segundos
+
+    return () => clearInterval(intervalo)
+  }, [logado])
+
+  // Atualiza tempo de sessão em qualquer atividade do usuário
+  useEffect(() => {
+    const atualizarAcesso = () => {
+      if (logado) {
+        localStorage.setItem('ultimoAcesso', String(Date.now()))
+      }
+    }
+
+    window.addEventListener('mousemove', atualizarAcesso)
+    window.addEventListener('keydown', atualizarAcesso)
+    window.addEventListener('click', atualizarAcesso)
+    window.addEventListener('scroll', atualizarAcesso)
+
+    return () => {
+      window.removeEventListener('mousemove', atualizarAcesso)
+      window.removeEventListener('keydown', atualizarAcesso)
+      window.removeEventListener('click', atualizarAcesso)
+      window.removeEventListener('scroll', atualizarAcesso)
+    }
+  }, [logado])
+
   return (
     <Routes>
-      {/* Rota para Login */}
+      {/* Página de login */}
       <Route path="/login" element={<Login onLogin={handleLogin} />} />
 
-      {/* Rota raiz que redireciona para /login ou /home conforme estado logado */}
+      {/* Redirecionamento raiz conforme login */}
       <Route path="/" element={<Navigate to={logado ? "/home" : "/login"} replace />} />
 
-      {/* Rotas protegidas, visíveis só se estiver logado */}
+      {/* Páginas internas protegidas */}
       {logado ? (
         <>
           <Route path="/home" element={<Home />} />
@@ -64,12 +103,9 @@ function App() {
           <Route path="/prioridade-obras" element={<PrioridadeObras />} />
           <Route path="/mapa" element={<Mapa />} />
           <Route path="/defeitos-progeo" element={<DefeitosProgeo />} />
-
-          {/* Qualquer outro caminho redireciona para home */}
           <Route path="*" element={<Navigate to="/home" replace />} />
         </>
       ) : (
-        // Se não logado, qualquer outro caminho redireciona para login
         <Route path="*" element={<Navigate to="/login" replace />} />
       )}
     </Routes>
