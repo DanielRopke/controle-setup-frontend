@@ -1,5 +1,5 @@
 import { useNavigate } from 'react-router-dom'
-import fundo from '../assets/fundo1.png'
+import fundo from '../assets/fundo2.png'
 import imagemBotao from '../assets/obras.png'
 
 function Home() {
