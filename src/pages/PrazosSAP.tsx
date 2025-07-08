@@ -37,6 +37,8 @@ interface MatrizItem {
   mesConclusao: string
 }
 
+const API = "https://controle-producao-backend.onrender.com"
+
 function PrazosSAP() {
   const navigate = useNavigate()
   const [seccionais, setSeccionais] = useState<string[]>([])
@@ -58,25 +60,13 @@ function PrazosSAP() {
   const [graficoDataSeccionalRS, setGraficoDataSeccionalRS] = useState<SeccionalData[]>([])
   const [matrizDados, setMatrizDados] = useState<MatrizItem[]>([])
 
-  // Busca dados iniciais e listas para filtros
   useEffect(() => {
-    axios.get("http://127.0.0.1:8000/api/seccionais/")
-      .then(resp => setSeccionais(resp.data))
-      .catch(() => {})
+    axios.get(`${API}/api/seccionais/`).then(resp => setSeccionais(resp.data)).catch(() => {})
+    axios.get(`${API}/api/status-sap-unicos/`).then(resp => setStatusSapList(resp.data)).catch(() => {})
+    axios.get(`${API}/api/tipos-unicos/`).then(resp => setTiposList(resp.data)).catch(() => {})
+    axios.get(`${API}/api/meses-conclusao/`).then(resp => setMesesConclusaoList(resp.data)).catch(() => {})
 
-    axios.get("http://127.0.0.1:8000/api/status-sap-unicos/")
-      .then(resp => setStatusSapList(resp.data))
-      .catch(() => {})
-
-    axios.get("http://127.0.0.1:8000/api/tipos-unicos/")
-      .then(resp => setTiposList(resp.data))
-      .catch(() => {})
-
-    axios.get("http://127.0.0.1:8000/api/meses-conclusao/")
-      .then(resp => setMesesConclusaoList(resp.data))
-      .catch(() => {})
-
-    axios.get("http://127.0.0.1:8000/api/status-ener-pep/")
+    axios.get(`${API}/api/status-ener-pep/`)
       .then(resp => {
         const todos = Object.entries(resp.data).flatMap(([status, obj]: any) =>
           Object.entries(obj).map(([seccional, count]) => ({
@@ -86,10 +76,9 @@ function PrazosSAP() {
           }))
         )
         setGraficoDataEner(todos)
-      })
-      .catch(() => {})
+      }).catch(() => {})
 
-    axios.get("http://127.0.0.1:8000/api/status-conc-pep/")
+    axios.get(`${API}/api/status-conc-pep/`)
       .then(resp => {
         const todos = Object.entries(resp.data).flatMap(([status, obj]: any) =>
           Object.entries(obj).map(([seccional, count]) => ({
@@ -99,10 +88,9 @@ function PrazosSAP() {
           }))
         )
         setGraficoDataConc(todos)
-      })
-      .catch(() => {})
+      }).catch(() => {})
 
-    axios.get("http://127.0.0.1:8000/api/status-servico-contagem/")
+    axios.get(`${API}/api/status-servico-contagem/`)
       .then(resp => {
         const servico = Object.entries(resp.data)
           .filter(([status]) => status.trim() !== "" && status.toLowerCase() !== "vazio")
@@ -111,10 +99,9 @@ function PrazosSAP() {
             count: Number(count) || 0
           }))
         setGraficoDataServico(servico)
-      })
-      .catch(() => {})
+      }).catch(() => {})
 
-    axios.get("http://127.0.0.1:8000/api/seccional-rs-pep/")
+    axios.get(`${API}/api/seccional-rs-pep/`)
       .then(resp => {
         const dadosFiltrados = Object.entries(resp.data)
           .filter(([seccional]) => seccional !== '#N/A')
@@ -125,13 +112,10 @@ function PrazosSAP() {
             scaledPEP: valores.pep_count * 100000
           }))
         setGraficoDataSeccionalRS(dadosFiltrados)
-      })
-      .catch(() => {})
+      }).catch(() => {})
   }, [])
 
-  // Atualiza matriz com filtros aplicados
   useEffect(() => {
-    // Salva filtros no localStorage para persistência
     localStorage.setItem('statusSapSelecionado', statusSapSelecionado)
     localStorage.setItem('tipoSelecionado', tipoSelecionado)
     localStorage.setItem('mesSelecionado', mesSelecionado)
@@ -143,7 +127,7 @@ function PrazosSAP() {
     if (tipoSelecionado) params.append('tipo', tipoSelecionado)
     if (mesSelecionado) params.append('mes', mesSelecionado)
 
-    axios.get(`http://127.0.0.1:8000/api/matriz-dados/?${params.toString()}`)
+    axios.get(`${API}/api/matriz-dados/?${params.toString()}`)
       .then(resp => setMatrizDados(resp.data))
       .catch(() => {})
   }, [seccionaisSelecionadas, statusSapSelecionado, tipoSelecionado, mesSelecionado])
@@ -177,21 +161,16 @@ function PrazosSAP() {
 
   return (
     <div className="flex flex-col min-h-screen bg-gradient-to-b from-gray-100 to-gray-200">
-      <header
-         className="w-full sticky top-0 z-[9999] flex items-center justify-between px-6 shadow-md"
-         style={{ backgroundColor: '#4ade80', height: '72px' }}
-
-      >
+      <header className="w-full sticky top-0 z-[9999] flex items-center justify-between px-6 shadow-md" style={{ backgroundColor: '#4ade80', height: '72px' }}>
         <button
-         onClick={() => navigate('/obras')}
-          className="botao-home ml-[12px]"  // adiciona essa classe
-            title="Voltar para menu"
-              aria-label="Voltar para menu"
-              type="button"
-              >
-                <img src={logo} alt="Logo Empresa" className="logo-botao" />
-              </button>
-
+          onClick={() => navigate('/obras')}
+          className="botao-home ml-[12px]"
+          title="Voltar para menu"
+          aria-label="Voltar para menu"
+          type="button"
+        >
+          <img src={logo} alt="Logo Empresa" className="logo-botao" />
+        </button>
 
         <h1 className="text-white text-2xl font-bold font-serif text-center flex-grow">
           Controle de Produção - Prazos SAP
@@ -211,14 +190,12 @@ function PrazosSAP() {
                     ? 'bg-white text-green-700 shadow-lg'
                     : 'bg-green-600 text-white hover:bg-green-500'}
                   ${idx === 0 ? 'mt-[24px]' : ''}`}
-               >
+              >
                 {s}
-               </button>
+              </button>
             ))}
           </div>
 
-
-          {/* Dropdowns novos: Status SAP, Tipo, Mês */}
           <select
             className="botao-home text-[18px] w-full text-center mt-[24px] cursor-pointer"
             value={statusSapSelecionado}
