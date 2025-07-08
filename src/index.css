@@ -11,7 +11,6 @@ html, body, #root {
   font-family: system-ui, sans-serif;
   overflow-y: auto;     /* ✅ permite rolagem vertical */
   overflow-x: hidden;   /* ✅ mantém o bloqueio horizontal */
-  background: #000;     /* mantém o fundo escuro se necessário */
 }
 
 /* Torna o canvas animado (FundoAnimado) fixo em background */
