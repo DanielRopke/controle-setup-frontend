@@ -1,4 +1,6 @@
+// src/pages/Login.tsx
 import { useState } from 'react';
+import { Helmet } from 'react-helmet';
 import logo from '../assets/LogoSetup.png';
 
 interface LoginProps {
@@ -19,10 +21,15 @@ export default function Login({ onLogin }: LoginProps) {
       className="relative min-h-screen w-screen bg-cover bg-center bg-no-repeat"
       style={{
         backgroundImage: "url('/imagens/grupo_setup.png')",
-        overflowY: 'hidden', // ✅ Desativa rolagem vertical
-        overflowX: 'hidden', // ✅ Garante que não haja rolagem horizontal
+        overflowY: 'hidden',
+        overflowX: 'hidden',
       }}
     >
+      {/* ✅ Título da aba */}
+      <Helmet>
+        <title>Controle SETUP</title>
+      </Helmet>
+
       {/* Overlay escuro para contraste */}
       <div className="absolute inset-0 bg-black opacity-50 z-0" />
 
