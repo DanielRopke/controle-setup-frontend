@@ -160,7 +160,7 @@ function PrazosSAP() {
     valor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', minimumFractionDigits: 0 })
 
   return (
-    <div className="flex flex-col min-h-screen bg-gradient-to-b from-gray-100 to-gray-200">
+    <div className="flex flex-col min-h-screen bg-gradient-to-b from-gray-100 to-gray-200 overflow-y-auto">
       <header className="w-full sticky top-0 z-[9999] flex items-center justify-between px-6 shadow-md" style={{ backgroundColor: '#4ade80', height: '72px' }}>
         <button
           onClick={() => navigate('/obras')}
