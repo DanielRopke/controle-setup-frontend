@@ -20,11 +20,30 @@ import {
 } from 'recharts'
 
 export default function PrazosSAP() {
-  const navigate = useNavigate()
+  const navigate = useNavigate();
   const {
     seccionaisSelecionadas,
     toggleSeccional,
     statusSap,
+    setStatusSap,
+    tipo,
+    setTipo,
+    mes,
+    setMes
+  } = useFiltros();
+
+  const {
+    seccionais,
+    statusSapList,
+    tiposList,
+    mesesList,
+    graficoEner,
+    graficoConc,
+    graficoServico,
+    graficoSeccionalRS,
+    matriz
+  } = useDadosGraficos({ seccionais: seccionaisSelecionadas, statusSap, tipo, mes });
+
   const dadosEner = processarDados(graficoEner, false, { seccionais: seccionaisSelecionadas })
     .slice().sort((a, b) => (b.count ?? 0) - (a.count ?? 0)).map(item => ({ ...item, seccional: '' }));
   const dadosConc = processarDados(graficoConc, true, { seccionais: seccionaisSelecionadas })
