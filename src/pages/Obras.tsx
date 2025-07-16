@@ -1,5 +1,5 @@
 import { Link, useNavigate } from 'react-router-dom'
-import { FundoAnimado } from '../components/FundoAnimado' // Fundo animado 3D
+import fundo from '../assets/fundo2.jpg'
 
 import prazosapImg from '../assets/prazosap.png'
 import programacaoImg from '../assets/programação.png'
@@ -12,8 +12,9 @@ import prioridadeImg from '../assets/prioridade.png'
 import mapaImg from '../assets/mapa.png'
 import defeitosImg from '../assets/defeitos.png'
 
-import logoSetup from '../assets/LogoSetup1.png'
+import logoSetup from '../assets/LogoSetup.png'  // Importação da logo
 
+// function Obras({ onLogout }: { onLogout: () => void }) {
 function Obras() {
   const navigate = useNavigate()
 
@@ -36,82 +37,83 @@ function Obras() {
   ]
 
   return (
-    <div className="relative w-full h-screen overflow-hidden text-white">
-      {/* Fundo animado estilo Tzolkin */}
-      <FundoAnimado />
-
-      {/* Conteúdo da página sobreposto ao fundo */}
-      <div className="relative z-10 min-h-screen grid grid-rows-4">
-
-        {/* Parte 1: cabeçalho */}
-        <div className="flex justify-between items-start p-6">
-          {/* Logo no canto superior esquerdo */}
-          <div>
-            <img
-              src={logoSetup}
-              alt="Logo Setup"
-              style={{
-                width: '66.66%',
-                maxWidth: '600px',
-                height: 'auto',
-                display: 'block',
-                marginTop: '1rem',
-                marginLeft: '1rem',
-              }}
-            />
-          </div>
-
-          <button
-            onClick={handleGoHome}
-            className="bg-white text-blue-900 font-bold px-4 py-2 rounded hover:bg-gray-100 transition"
-          >
-            Home
-          </button>
+    <div
+      className="min-h-screen grid grid-rows-4 text-white"
+      style={{
+        backgroundImage: `url(${fundo})`,
+        backgroundSize: 'cover',
+        backgroundPosition: 'center',
+        overflowX: 'hidden',       // impede rolagem horizontal
+      }}
+    >
+      {/* Parte 1: cabeçalho */}
+      <div className="flex justify-between items-start p-6">
+        {/* Logo no canto superior esquerdo */}
+        <div>
+          <img
+            src={logoSetup}
+            alt="Logo Setup"
+            style={{
+              width: '66.66%',
+              maxWidth: '150px',
+              height: 'auto',
+              display: 'block',
+              marginTop: '1rem',      // espaço de 16px do topo
+              marginLeft: '1rem',     // espaço de 16px da lateral esquerda
+            }}
+          />
         </div>
 
-        {/* Parte 2: espaçamento */}
-        <div></div>
-
-        {/* Parte 3 e 4: botões do menu */}
-        <div
-          className="row-start-3 row-end-5 flex justify-center items-center overflow-y-auto"
-          style={{ maxHeight: 'calc(100vh - 160px)' }}
+        <button
+          onClick={handleGoHome}
+          className="bg-white text-blue-900 font-bold px-4 py-2 rounded hover:bg-gray-100 transition"
         >
-          <div className="flex flex-wrap justify-evenly gap-10 w-full max-w-6xl px-6">
-            {menuItems.map(({ label, to, img }) => (
-              <div key={to} className="flex flex-col items-center">
-                <Link
-                  to={to}
-                  className="border-solid overflow-hidden hover:scale-105 transition-transform"
-                  style={{
-                    width: '70px',
-                    height: '70px',
-                    borderWidth: '5px',
-                    borderStyle: 'solid',
-                    borderRadius: '1rem',
-                    padding: '6px',
-                    backgroundColor: 'transparent',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    borderColor: '#16a34a',
-                  }}
-                >
-                  <img
-                    src={img}
-                    alt={label}
-                    className="w-full h-full object-contain"
-                  />
-                </Link>
-                <span
-                  className="mt-2 font-semibold text-center text-sm max-w-[100px]"
-                  style={{ color: 'black' }}
-                >
-                  {label}
-                </span>
-              </div>
-            ))}
-          </div>
+          Home
+        </button>
+      </div>
+
+      {/* Parte 2: vazia */}
+      <div></div>
+
+      {/* Parte 3 e 4 juntas para botões */}
+      <div
+        className="row-start-3 row-end-5 flex justify-center items-center overflow-y-auto"
+        style={{ maxHeight: 'calc(100vh - 160px)' }} // ajusta max altura para rolagem vertical, considerando o header
+      >
+        <div className="flex flex-wrap justify-evenly gap-10 w-full max-w-6xl px-6">
+          {menuItems.map(({ label, to, img }) => (
+            <div key={to} className="flex flex-col items-center">
+              <Link
+                to={to}
+                className="border-solid overflow-hidden hover:scale-105 transition-transform"
+                style={{
+                  width: '70px',
+                  height: '70px',
+                  borderWidth: '5px',
+                  borderStyle: 'solid',
+                  borderRadius: '1rem',
+                  padding: '6px',
+                  backgroundColor: 'transparent',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  borderColor: 'white', // borda branca
+                }}
+              >
+                <img
+                  src={img}
+                  alt={label}
+                  className="w-full h-full object-contain"
+                />
+              </Link>
+              <span
+                className="mt-2 font-semibold text-center text-sm max-w-[100px]"
+                style={{ color: 'white' }} // texto branco
+              >
+                {label}
+              </span>
+            </div>
+          ))}
         </div>
       </div>
     </div>

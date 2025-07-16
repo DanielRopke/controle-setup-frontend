@@ -9,8 +9,9 @@ html, body, #root {
   width: 100vw;
   height: 100vh;
   font-family: system-ui, sans-serif;
-  overflow-y: auto;     /* ✅ permite rolagem vertical */
-  overflow-x: hidden;   /* ✅ mantém o bloqueio horizontal */
+  overflow-y: auto;     /* permite rolagem vertical */
+  overflow-x: hidden;   /* mantém o bloqueio horizontal */
+  background: white;    /* fundo branco igual ao front */
 }
 
 /* Torna o canvas animado (FundoAnimado) fixo em background */
