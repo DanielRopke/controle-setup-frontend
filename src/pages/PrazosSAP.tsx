@@ -6,7 +6,6 @@ import { SidebarFiltros } from '../components/SidebarFiltros'
 import { GraficoBarras } from '../components/GraficoBarras'
 import { TabelaMatriz } from '../components/TabelaMatriz'
 import { useFiltros } from '../hooks/useFiltros'
-import type { GraficoItem } from '../types';
 import { useDadosGraficos } from '../hooks/useDadosGraficos'
 import { processarDados } from '../utils/processarDados'
 import logo from '../assets/logo.png'
