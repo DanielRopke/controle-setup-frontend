@@ -2,7 +2,6 @@
 import { useNavigate } from 'react-router-dom'
 import { SidebarFiltros } from './components/SidebarFiltros'
 import { GraficoBarras } from './components/GraficoBarras'
-import type { GraficoItem } from './types';
 import { TabelaMatriz } from './components/TabelaMatriz'
 import { useFiltros } from './hooks/useFiltros'
 import { useDadosGraficos } from './hooks/useDadosGraficos'
@@ -26,12 +25,12 @@ export default function PrazosSAP() {
     seccionaisSelecionadas,
     toggleSeccional,
     statusSap,
-    setStatusSap,
-    tipo,
-    setTipo,
-    mes,
-    setMes
-  } = useFiltros()
+  const dadosEner = processarDados(graficoEner, false, { seccionais: seccionaisSelecionadas })
+    .slice().sort((a, b) => (b.count ?? 0) - (a.count ?? 0)).map(item => ({ ...item, seccional: '' }));
+  const dadosConc = processarDados(graficoConc, true, { seccionais: seccionaisSelecionadas })
+    .slice().sort((a, b) => (b.count ?? 0) - (a.count ?? 0)).map(item => ({ ...item, seccional: '' }));
+  const dadosServico = processarDados(graficoServico, false, { seccionais: seccionaisSelecionadas })
+    .slice().sort((a, b) => (b.count ?? 0) - (a.count ?? 0)).map(item => ({ ...item, seccional: '' }));
 
   const {
     seccionais,
@@ -46,11 +45,11 @@ export default function PrazosSAP() {
   } = useDadosGraficos({ seccionais: seccionaisSelecionadas, statusSap, tipo, mes })
 
   const dadosEner = processarDados(graficoEner, false, { seccionais: seccionaisSelecionadas })
-    .slice().sort((a, b) => (b.count ?? 0) - (a.count ?? 0));
+    .slice().sort((a, b) => (b.count ?? 0) - (a.count ?? 0)).map(item => ({ ...item, seccional: '' }));
   const dadosConc = processarDados(graficoConc, true, { seccionais: seccionaisSelecionadas })
-    .slice().sort((a, b) => (b.count ?? 0) - (a.count ?? 0));
+    .slice().sort((a, b) => (b.count ?? 0) - (a.count ?? 0)).map(item => ({ ...item, seccional: '' }));
   const dadosServico = processarDados(graficoServico, false, { seccionais: seccionaisSelecionadas })
-    .slice().sort((a, b) => (b.count ?? 0) - (a.count ?? 0));
+    .slice().sort((a, b) => (b.count ?? 0) - (a.count ?? 0)).map(item => ({ ...item, seccional: '' }));
   const graficoSeccionalRSOrdenado = Array.isArray(graficoSeccionalRS)
     ? graficoSeccionalRS.slice().sort((a, b) => (b.totalRS ?? 0) - (a.totalRS ?? 0))
     : graficoSeccionalRS;
@@ -199,7 +198,7 @@ export default function PrazosSAP() {
                 <div className="relative z-[20]">
                   <div className="absolute top-0 left-0 w-full h-[48px] rounded-t-3xl bg-white/90 backdrop-blur-md z-[30] pointer-events-none" />
                   <div className="relative z-[40]">
-                <GraficoBarras titulo="Motivo de Não Fechado" dados={dadosServico.map(item => ({ ...item, seccional: '' }))} />
+                <GraficoBarras titulo="Motivo de Não Fechado" dados={dadosServico} />
                   </div>
                 </div>
               </div>
