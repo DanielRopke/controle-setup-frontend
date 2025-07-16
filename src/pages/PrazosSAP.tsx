@@ -263,7 +263,7 @@ export default function PrazosSAP() {
                   <div className="relative z-[20]">
                     <div className="absolute top-0 left-0 w-full h-[48px] rounded-t-3xl bg-white/90 backdrop-blur-md z-[30] pointer-events-none" />
                     <div className="relative z-[40]">
-                      <GraficoBarras titulo="Motivo de Não Fechado" dados={dadosServico} />
+                      <GraficoBarras titulo="Motivo de Não Fechado" dados={dadosServico as any[]} />
                     </div>
                   </div>
                 </div>
