@@ -46,11 +46,11 @@ export default function PrazosSAP() {
   } = useDadosGraficos({ seccionais: seccionaisSelecionadas, statusSap, tipo, mes })
 
   const dadosEner = processarDados(graficoEner, false, { seccionais: seccionaisSelecionadas })
-    .slice().sort((a, b) => (b.valor ?? 0) - (a.valor ?? 0));
+    .slice().sort((a, b) => (b.count ?? 0) - (a.count ?? 0));
   const dadosConc = processarDados(graficoConc, true, { seccionais: seccionaisSelecionadas })
-    .slice().sort((a, b) => (b.valor ?? 0) - (a.valor ?? 0));
+    .slice().sort((a, b) => (b.count ?? 0) - (a.count ?? 0));
   const dadosServico = processarDados(graficoServico, false, { seccionais: seccionaisSelecionadas })
-    .slice().sort((a, b) => (b.valor ?? 0) - (a.valor ?? 0));
+    .slice().sort((a, b) => (b.count ?? 0) - (a.count ?? 0));
   const graficoSeccionalRSOrdenado = Array.isArray(graficoSeccionalRS)
     ? graficoSeccionalRS.slice().sort((a, b) => (b.totalRS ?? 0) - (a.totalRS ?? 0))
     : graficoSeccionalRS;

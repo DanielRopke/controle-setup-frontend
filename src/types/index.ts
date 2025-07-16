@@ -22,4 +22,4 @@ export interface MatrizItem {
   mesConclusao: string
 }
 
-export type { GraficoItem, SeccionalData, MatrizItem }
+
