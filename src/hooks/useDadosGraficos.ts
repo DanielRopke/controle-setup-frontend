@@ -15,7 +15,7 @@ export function useDadosGraficos(filtros: {
 
   const [graficoEner, setGraficoEner] = useState<GraficoItem[]>([])
   const [graficoConc, setGraficoConc] = useState<GraficoItem[]>([])
-  const [graficoServico, setGraficoServico] = useState<{ status: string, count: number }[]>([])
+  const [graficoServico, setGraficoServico] = useState<GraficoItem[]>([])
   const [graficoSeccionalRS, setGraficoSeccionalRS] = useState<SeccionalData[]>([])
   const [matriz, setMatriz] = useState<MatrizItem[]>([])
 
@@ -53,7 +53,8 @@ export function useDadosGraficos(filtros: {
         .filter(([s]) => s.trim() !== "" && s.toLowerCase() !== "vazio")
         .map(([status, count]) => ({
           status,
-          count: Number(count) || 0
+          count: Number(count) || 0,
+          seccional: ''
         }))
       setGraficoServico(dados)
     }).catch(() => {})

@@ -3,9 +3,11 @@ import {
   LabelList, CartesianGrid
 } from 'recharts'
 
+import type { GraficoItem } from '../types/index';
+
 interface Props {
   titulo: string
-  dados: { status: string, count: number }[]
+  dados: GraficoItem[]
   cor?: string
 }
 
