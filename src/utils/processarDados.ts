@@ -14,5 +14,5 @@ export function processarDados(
       acc[curr.status] = (acc[curr.status] || 0) + curr.count
       return acc
     }, {})
-  ).map(([status, count]) => ({ status, count, seccional: '' }))
+  ).map(([status, count]) => ({ status, count }))
 }

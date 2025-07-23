@@ -1,6 +1,8 @@
+
 import axios from 'axios'
 
-export const API_BASE = import.meta.env.VITE_API_BASE
+// Força uso do backend do Render para todas as chamadas
+const API_BASE = import.meta.env.VITE_API_BASE;
 
 export const api = {
   getSeccionais: () => axios.get<string[]>(`${API_BASE}/seccionais/`),
