@@ -1,5 +1,7 @@
 // src/pages/PrazosSAP.tsx
-import React from 'react'
+// import React from 'react' // removido, não utilizado
+// @ts-ignore
+import html2canvas from 'html2canvas';
 import { FundoAnimado } from '../components/FundoAnimado'
 import { useNavigate } from 'react-router-dom'
 import { SidebarFiltros } from '../components/SidebarFiltros'
@@ -55,7 +57,7 @@ export default function PrazosSAP() {
     .slice().sort((a, b) => (b.count ?? 0) - (a.count ?? 0));
   const dadosConc = processarDados(graficoConc, true, { seccionais: seccionaisSelecionadas })
     .slice().sort((a, b) => (b.count ?? 0) - (a.count ?? 0));
-  const dadosServico = processarDados(graficoServico, false, { seccionais: seccionaisSelecionadas })
+  const dadosServico: { status: string; count: number }[] = processarDados(graficoServico, false, { seccionais: seccionaisSelecionadas })
     .slice().sort((a, b) => (b.count ?? 0) - (a.count ?? 0));
   const graficoSeccionalRSOrdenado = Array.isArray(graficoSeccionalRS)
     ? graficoSeccionalRS.slice().sort((a, b) => (b.totalRS ?? 0) - (a.totalRS ?? 0))
@@ -260,14 +262,14 @@ export default function PrazosSAP() {
                       const graficoDiv = e.currentTarget.parentElement;
                       if (!graficoDiv) return;
                       const html2canvas = (await import('html2canvas')).default;
-                      html2canvas(graficoDiv, { backgroundColor: null }).then(canvas => {
-                        canvas.toBlob(blob => {
-                          if (blob) {
-                            const item = new ClipboardItem({ 'image/png': blob });
-                            navigator.clipboard.write([item]);
-                          }
-                        });
-                      });
+                  html2canvas(graficoDiv, {}).then((canvas: HTMLCanvasElement) => {
+                    canvas.toBlob((blob: Blob | null) => {
+                      if (blob) {
+                        const item = new ClipboardItem({ 'image/png': blob });
+                        navigator.clipboard.write([item]);
+                      }
+                    });
+                  });
                     }}
                     style={{ position: 'absolute', top: 12, right: 12, zIndex: 20, width: 32, height: 32, background: '#fff', borderRadius: 8, border: '2px solid #4ade80', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 2px 8px rgba(0,0,0,0.08)' }}
                   >
@@ -283,9 +285,9 @@ export default function PrazosSAP() {
                   <ResponsiveContainer width="100%" height="100%">
                       <BarChart data={graficoSeccionalRSOrdenado} margin={{ top: 20, right: 30, left: 30, bottom: 40 }}
                         onClick={e => {
-                          if (e && e.activePayload && e.activePayload[0]) {
-                            handleBarClick(e.activePayload[0].payload, 'seccional');
-                          }
+                      if (e && 'activePayload' in e && Array.isArray(e.activePayload) && e.activePayload[0]) {
+                        handleBarClick(e.activePayload[0].payload, 'seccional');
+                      }
                         }}
                       >
                       <foreignObject x={0} y={0} width="100%" height="100%">
