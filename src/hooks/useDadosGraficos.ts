@@ -36,9 +36,14 @@ export function useDadosGraficos(filtros: {
     api.getMesesConclusao().then(r => setMesesList(r.data));
     api.getGraficoEner().then(r => setGraficoEner(flattenGrafico(r.data)));
     api.getGraficoConc().then(r => setGraficoConc(flattenGrafico(r.data)));
-    api.getGraficoServico().then(r => setGraficoServico(flattenServico(r.data)));
+    const params = new URLSearchParams();
+    if (filtros.seccionais.length) params.append('seccional', filtros.seccionais.join(','));
+    if (filtros.statusSap) params.append('status_sap', filtros.statusSap);
+    if (filtros.tipo) params.append('tipo', filtros.tipo);
+    if (filtros.mes) params.append('mes', filtros.mes);
+    api.getGraficoServico(params).then(r => setGraficoServico(flattenGrafico(r.data)));
     api.getGraficoSeccionalRS().then(r => setGraficoSeccionalRS(flattenSeccionalRS(r.data)));
-  }, []);
+  }, [filtros.seccionais, filtros.statusSap, filtros.tipo, filtros.mes]);
 
   useEffect(() => {
     const params = new URLSearchParams();
@@ -54,8 +59,20 @@ export function useDadosGraficos(filtros: {
       Object.entries(obj).map(([seccional, count]) => ({ status, seccional, count: Number(count) || 0 }))
     );
   }
-  function flattenServico(data: Record<string, number>): ServicoItem[] {
-    return Object.entries(data)
+  // Suporta tanto o formato antigo quanto o novo (agrupado por seccional)
+  function flattenServico(data: Record<string, number> | Record<string, Record<string, number>>): ServicoItem[] {
+    if (typeof Object.values(data)[0] === 'object') {
+      const result: ServicoItem[] = [];
+      Object.entries(data as Record<string, Record<string, number>>).forEach(([status, seccionaisObj]) => {
+        if (typeof seccionaisObj !== 'object') return;
+        const total = Object.values(seccionaisObj).reduce((acc, v) => acc + Number(v || 0), 0);
+        if (status.trim() !== '' && status.toLowerCase() !== 'vazio') {
+          result.push({ status, count: total });
+        }
+      });
+      return result;
+    }
+    return Object.entries(data as Record<string, number>)
       .filter(([status]) => status.trim() !== '' && status.toLowerCase() !== 'vazio')
       .map(([status, count]) => ({ status, count: Number(count) || 0 }));
   }

@@ -57,11 +57,34 @@ export default function PrazosSAP() {
     .slice().sort((a, b) => (b.count ?? 0) - (a.count ?? 0));
   const dadosConc = processarDados(graficoConc, true, { seccionais: seccionaisSelecionadas })
     .slice().sort((a, b) => (b.count ?? 0) - (a.count ?? 0));
-  const dadosServico: { status: string; count: number }[] = processarDados(graficoServico, false, { seccionais: seccionaisSelecionadas })
-    .slice().sort((a, b) => (b.count ?? 0) - (a.count ?? 0));
-  const graficoSeccionalRSOrdenado = Array.isArray(graficoSeccionalRS)
-    ? graficoSeccionalRS.slice().sort((a, b) => (b.totalRS ?? 0) - (a.totalRS ?? 0))
-    : graficoSeccionalRS;
+  // Motivo de Não Fechado: agrupa por status, somando todas as seccionais selecionadas
+  const dadosServico = Array.isArray(graficoServico)
+    ? graficoServico
+        .filter(item => !seccionaisSelecionadas.length || seccionaisSelecionadas.includes(item.seccional))
+        .reduce((acc, item) => {
+          const found = acc.find(d => d.status === item.status);
+          if (found) {
+            found.count += item.count;
+          } else {
+            acc.push({ status: item.status, count: item.count });
+          }
+          return acc;
+        }, [] as { status: string; count: number }[])
+        .slice().sort((a, b) => (b.count ?? 0) - (a.count ?? 0))
+    : [];
+  // Filtra os dados conforme os filtros aplicados
+  const graficoSeccionalRSFiltrado = Array.isArray(graficoSeccionalRS)
+    ? graficoSeccionalRS.filter(item => {
+        const seccionalMatch = !seccionaisSelecionadas.length || seccionaisSelecionadas.includes(item.seccional);
+        const statusMatch = !statusSap || item.statusSap === statusSap;
+        const tipoMatch = !tipo || item.tipo === tipo;
+        const mesMatch = !mes || item.mes === mes;
+        return seccionalMatch && statusMatch && tipoMatch && mesMatch;
+      })
+    : [];
+  const graficoSeccionalRSOrdenado = Array.isArray(graficoSeccionalRSFiltrado)
+    ? graficoSeccionalRSFiltrado.slice().sort((a, b) => (b.totalRS ?? 0) - (a.totalRS ?? 0))
+    : [];
 
   // Função para tratar clique nas barras dos gráficos
   const handleBarClick = (item: { status?: string, count?: number }, tipoGrafico: string) => {
@@ -155,8 +178,8 @@ export default function PrazosSAP() {
             <span>Valor Total</span>
             <span className="text-base font-semibold text-green-700" style={{ fontWeight: 600 }}>
               {formatarValorRS(
-                Array.isArray(graficoSeccionalRS)
-                  ? graficoSeccionalRS.reduce((acc, cur) => acc + (cur.totalRS || 0), 0)
+                Array.isArray(graficoSeccionalRSOrdenado)
+                  ? graficoSeccionalRSOrdenado.reduce((acc, cur) => acc + (cur.totalRS || 0), 0)
                   : 0
               )}
             </span>
@@ -172,8 +195,8 @@ export default function PrazosSAP() {
               <span>Valor Total</span>
               <span className="text-base font-semibold text-green-700" style={{ fontWeight: 600 }}>
                 {formatarValorRS(
-                  Array.isArray(graficoSeccionalRS)
-                    ? graficoSeccionalRS.reduce((acc, cur) => acc + (cur.totalRS || 0), 0)
+                  Array.isArray(graficoSeccionalRSOrdenado)
+                    ? graficoSeccionalRSOrdenado.reduce((acc, cur) => acc + (cur.totalRS || 0), 0)
                     : 0
                 )}
               </span>
@@ -184,8 +207,8 @@ export default function PrazosSAP() {
             >
               <span>Qtd de PEP</span>
               <span className="text-base font-semibold text-green-700" style={{ fontWeight: 600 }}>
-                {Array.isArray(graficoSeccionalRS)
-                  ? graficoSeccionalRS.reduce((acc, cur) => acc + (cur.totalPEP || 0), 0)
+                {Array.isArray(graficoSeccionalRSOrdenado)
+                  ? graficoSeccionalRSOrdenado.reduce((acc, cur) => acc + (cur.totalPEP || 0), 0)
                   : 0}
               </span>
             </div>
@@ -303,7 +326,13 @@ export default function PrazosSAP() {
                         ]}
                       />
                       <Bar dataKey="totalRS" fill="#3182ce">
-                        <LabelList dataKey="totalRS" position="top" fill="#333" fontSize={12} />
+                        <LabelList
+                          dataKey="totalRS"
+                          position="top"
+                          fill="#333"
+                          fontSize={12}
+                          formatter={formatarValorRS}
+                        />
                       </Bar>
                       <Bar dataKey="scaledPEP" fill="#4ade80">
                         <LabelList dataKey="totalPEP" position="top" fill="#333" fontSize={12} />
