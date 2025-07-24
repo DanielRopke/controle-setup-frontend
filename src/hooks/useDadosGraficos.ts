@@ -60,25 +60,6 @@ export function useDadosGraficos(filtros: {
     );
   }
   // Suporta tanto o formato antigo quanto o novo (agrupado por seccional)
-  function flattenServico(data: Record<string, number> | Record<string, Record<string, number>>): ServicoItem[] {
-    // Sempre retorna ServicoItem com seccional
-    if (typeof Object.values(data)[0] === 'object') {
-      const result: ServicoItem[] = [];
-      Object.entries(data as Record<string, Record<string, number>>).forEach(([status, seccionaisObj]) => {
-        if (typeof seccionaisObj !== 'object') return;
-        Object.entries(seccionaisObj).forEach(([seccional, count]) => {
-          if (status.trim() !== '' && status.toLowerCase() !== 'vazio') {
-            result.push({ status, seccional, count: Number(count) || 0 });
-          }
-        });
-      });
-      return result;
-    }
-    // Se não for agrupado, coloca seccional como 'Total'
-    return Object.entries(data as Record<string, number>)
-      .filter(([status]) => status.trim() !== '' && status.toLowerCase() !== 'vazio')
-      .map(([status, count]) => ({ status, seccional: 'Total', count: Number(count) || 0 }));
-  }
   function flattenSeccionalRS(data: Record<string, { valor: number; pep_count: number; mes?: string; tipo?: string; statusSap?: string }>): SeccionalData[] {
     return Object.entries(data)
       .filter(([seccional]) => seccional !== '#N/A')
