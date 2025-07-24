@@ -61,29 +61,35 @@ export function useDadosGraficos(filtros: {
   }
   // Suporta tanto o formato antigo quanto o novo (agrupado por seccional)
   function flattenServico(data: Record<string, number> | Record<string, Record<string, number>>): ServicoItem[] {
+    // Sempre retorna ServicoItem com seccional
     if (typeof Object.values(data)[0] === 'object') {
       const result: ServicoItem[] = [];
       Object.entries(data as Record<string, Record<string, number>>).forEach(([status, seccionaisObj]) => {
         if (typeof seccionaisObj !== 'object') return;
-        const total = Object.values(seccionaisObj).reduce((acc, v) => acc + Number(v || 0), 0);
-        if (status.trim() !== '' && status.toLowerCase() !== 'vazio') {
-          result.push({ status, count: total });
-        }
+        Object.entries(seccionaisObj).forEach(([seccional, count]) => {
+          if (status.trim() !== '' && status.toLowerCase() !== 'vazio') {
+            result.push({ status, seccional, count: Number(count) || 0 });
+          }
+        });
       });
       return result;
     }
+    // Se não for agrupado, coloca seccional como 'Total'
     return Object.entries(data as Record<string, number>)
       .filter(([status]) => status.trim() !== '' && status.toLowerCase() !== 'vazio')
-      .map(([status, count]) => ({ status, count: Number(count) || 0 }));
+      .map(([status, count]) => ({ status, seccional: 'Total', count: Number(count) || 0 }));
   }
-  function flattenSeccionalRS(data: Record<string, { valor: number; pep_count: number }>): SeccionalData[] {
+  function flattenSeccionalRS(data: Record<string, { valor: number; pep_count: number; mes?: string; tipo?: string; statusSap?: string }>): SeccionalData[] {
     return Object.entries(data)
       .filter(([seccional]) => seccional !== '#N/A')
       .map(([seccional, valores]) => ({
         seccional,
         totalRS: Number((valores?.valor ?? 0).toFixed(0)),
         totalPEP: valores?.pep_count ?? 0,
-        scaledPEP: (valores?.pep_count ?? 0) * 10000
+        scaledPEP: (valores?.pep_count ?? 0) * 10000,
+        mes: valores?.mes ?? '',
+        tipo: valores?.tipo ?? '',
+        statusSap: valores?.statusSap ?? '',
       }));
   }
 
