@@ -331,7 +331,6 @@ export default function PrazosSAP() {
                           position="top"
                           fill="#333"
                           fontSize={12}
-                          formatter={formatarValorRS}
                         />
                       </Bar>
                       <Bar dataKey="scaledPEP" fill="#4ade80">
