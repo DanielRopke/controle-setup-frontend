@@ -557,8 +557,8 @@ export default function PrazosSAP() {
 
 	return (
 		<div className="relative z-10 min-h-screen bg-transparent lovable">
-			{/* Fundo animado em toda a página (fixo atrás do conteúdo) */}
-			<FundoAnimado />
+			{/* Fundo animado em toda a página (fixo atrás do conteúdo) - sem badge nesta página */}
+			<FundoAnimado showBadge={false} />
 			<header className="fixed top-0 left-0 right-0 z-50 border-b border-green-500 shadow-md bg-gradient-to-r from-green-600 via-green-600/90 to-green-700">
 				<div className="relative flex items-center justify-between h-16 px-4 pr-8 lg:px-6">
 					{/* Título centralizado */}

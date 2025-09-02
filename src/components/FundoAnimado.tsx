@@ -2,7 +2,7 @@
 import { useEffect, useRef } from "react";
 import * as THREE from "three";
 
-export function FundoAnimado() {
+export function FundoAnimado({ showBadge = true }: { showBadge?: boolean }) {
   const mountRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -65,28 +65,38 @@ export function FundoAnimado() {
   console.info('FundoAnimado: canvas criado e anexado ao container', { containerId: container.id, renderer: !!renderer });
 
   // -- debug badge: exibe um pequeno indicador no canto inferior esquerdo para confirmar montagem
-  try {
-    let badge = document.getElementById('fundo-animado-badge');
-    if (!badge) {
-      badge = document.createElement('div');
-      badge.id = 'fundo-animado-badge';
-      badge.textContent = 'FundoAnimado: ON';
-      badge.style.position = 'fixed';
-      badge.style.left = '8px';
-      badge.style.bottom = '8px';
-      badge.style.zIndex = '60';
-      badge.style.padding = '6px 8px';
-      badge.style.fontSize = '12px';
-      badge.style.fontFamily = 'Inter, system-ui, sans-serif';
-      badge.style.color = '#0f172a';
-      badge.style.background = 'rgba(255,255,255,0.9)';
-      badge.style.borderRadius = '6px';
-      badge.style.boxShadow = '0 2px 8px rgba(0,0,0,0.15)';
-      badge.style.pointerEvents = 'none';
-      document.body.appendChild(badge);
+  if (showBadge) {
+    try {
+      let badge = document.getElementById('fundo-animado-badge');
+      if (!badge) {
+        badge = document.createElement('div');
+        badge.id = 'fundo-animado-badge';
+        badge.textContent = 'FundoAnimado: ON';
+        badge.style.position = 'fixed';
+        badge.style.left = '8px';
+        badge.style.bottom = '8px';
+        badge.style.zIndex = '60';
+        badge.style.padding = '6px 8px';
+        badge.style.fontSize = '12px';
+        badge.style.fontFamily = 'Inter, system-ui, sans-serif';
+        badge.style.color = '#0f172a';
+        badge.style.background = 'rgba(255,255,255,0.9)';
+        badge.style.borderRadius = '6px';
+        badge.style.boxShadow = '0 2px 8px rgba(0,0,0,0.15)';
+        badge.style.pointerEvents = 'none';
+        document.body.appendChild(badge);
+      }
+    } catch {
+      // não crítico
     }
-  } catch (e) {
-    // não crítico
+  } else {
+    // se showBadge for false, garantir que o badge seja removido caso exista
+    try {
+      const existing = document.getElementById('fundo-animado-badge');
+      if (existing && existing.parentElement) existing.parentElement.removeChild(existing);
+    } catch {
+      // não crítico
+    }
   }
 
     // Textura circular das bolinhas (verde uniforme)
@@ -362,7 +372,7 @@ export function FundoAnimado() {
         if (c2 && c2.parentElement) c2.parentElement.removeChild(c2);
       }
     };
-  }, []);
+  }, [showBadge]);
 
     return (
     <div
