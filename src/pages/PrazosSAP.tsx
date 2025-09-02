@@ -1,5 +1,6 @@
 // Dashboard consolidado: conteúdo migrado da antiga PrazosSAP1
 import React, { useEffect, useState, useRef } from 'react';
+import ContextMenu from '../components/ContextMenu';
 import { useNavigate } from 'react-router-dom';
 import { Button } from "../components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card";
@@ -45,7 +46,11 @@ export default function PrazosSAP() {
 	const [selectedStatusSap, setSelectedStatusSap] = useState<string>('');
 	const [selectedTipo, setSelectedTipo] = useState<string>('');
 	const [selectedMes, setSelectedMes] = useState<string>('');
-	const [selectedMatrixRow, setSelectedMatrixRow] = useState<string | null>(null);
+	const [selectedMatrixRows, setSelectedMatrixRows] = useState<string[]>([]);
+	// Context menu state
+	const [contextOpen, setContextOpen] = useState(false);
+	const [contextPos, setContextPos] = useState({ x: 0, y: 0 });
+	const [contextItems, setContextItems] = useState<{ id: string; label: string; onClick: () => void }[]>([]);
 	const [sortConfig, setSortConfig] = useState<{ key?: keyof DashboardData['matrix'][0]; direction?: 'asc' | 'desc' }>({});
 	const [regions, setRegions] = useState<string[]>([]);
 	const [rawRows, setRawRows] = useState<MatrizItem[]>([]);
@@ -842,7 +847,70 @@ export default function PrazosSAP() {
 									</TableHeader>
 									<TableBody>
 										{filteredData.matrix.map((row, index) => (
-											<TableRow key={index} className={cn("cursor-pointer transition-all duration-200 select-none", selectedMatrixRow === row.pep ? "bg-green-50 border-l-4 border-l-green-600 shadow-md hover:bg-green-100" : "hover:bg-gray-50")} onClick={() => setSelectedMatrixRow(row.pep)}>
+											<TableRow
+												key={index}
+												className={cn(
+													"cursor-pointer transition-all duration-200 select-none",
+													selectedMatrixRows.includes(row.pep)
+														? "bg-green-50 border-l-4 border-l-green-600 shadow-md hover:bg-green-100"
+														: "hover:bg-gray-50"
+												)}
+												onClick={(e: React.MouseEvent) => {
+												// Ctrl (Windows/Linux) ou Meta (Mac) -> toggle selection
+												if ((e.ctrlKey || e.metaKey)) {
+													e.preventDefault();
+													setSelectedMatrixRows(prev => {
+														if (prev.includes(row.pep)) return prev.filter(p => p !== row.pep);
+														return [...prev, row.pep];
+													});
+												} else {
+													// single selection
+													setSelectedMatrixRows([row.pep]);
+												}
+											}}
+											onContextMenu={(e: React.MouseEvent) => {
+												e.preventDefault();
+												// open reusable context menu with two actions
+												const cx = e.clientX;
+												const cy = e.clientY;
+												setContextPos({ x: cx, y: cy });
+												setContextItems([
+													{
+														id: 'copy-servicos',
+														label: 'COPIAR SERVIÇOS',
+														onClick: () => {
+															const selected = selectedMatrixRows.length ? selectedMatrixRows : [row.pep];
+															const lines = filteredData.matrix.filter(r => selected.includes(r.pep)).map(r => r.pep);
+															navigator.clipboard.writeText(lines.join('\n')).then(() => showToast('Serviços copiados!')).catch(() => showToast('Erro ao copiar'));
+															setContextOpen(false);
+														}
+													},
+													{
+														id: 'copy-table',
+														label: 'COPIAR TABELA',
+														onClick: () => {
+															const selected = selectedMatrixRows.length ? selectedMatrixRows : [row.pep];
+															const rowsToCopy = filteredData.matrix.filter(r => selected.includes(r.pep));
+															const tsv = rowsToCopy.map(r => [r.pep, r.prazo, r.dataConclusao, r.status, r.rs].join('\t')).join('\n');
+															navigator.clipboard.writeText(tsv).then(() => showToast('Tabela copiada!')).catch(() => showToast('Erro ao copiar'));
+															setContextOpen(false);
+														}
+													}
+												]);
+												setContextOpen(true);
+											}}
+											onAuxClick={(e: React.MouseEvent) => {
+												// botão do meio (wheel/middle) geralmente tem button === 1
+												if ((e as React.MouseEvent).button === 1) {
+													e.preventDefault();
+													const raw = String(row.rs || '0');
+													navigator.clipboard.writeText(raw).then(() => {
+													showToast(`Valor R$ ${row.rs.toLocaleString('pt-BR')} copiado!`);
+													}).catch(() => showToast('Erro ao copiar valor'));
+												}
+											}}
+											title="Ctrl/Cmd+clique para selecionar múltiplas linhas. Clique com o botão direito para abrir menu de copiar"
+											>
 												<TableCell className="font-mono text-sm">{row.pep}</TableCell>
 												<TableCell className="text-sm">{row.prazo}</TableCell>
 												<TableCell className="text-sm">{row.dataConclusao}</TableCell>
@@ -861,6 +929,14 @@ export default function PrazosSAP() {
 					</Card>
 				</main>
 			</div>
+
+		{/* Context menu shared component */}
+		<ContextMenu
+			open={contextOpen}
+			position={contextPos}
+			items={contextItems}
+			onClose={() => setContextOpen(false)}
+		/>
 		</div>
 	);
 }
