@@ -446,7 +446,7 @@ export default function PrazosSAP() {
 			{/* Fundo animado em toda a página (fixo atrás do conteúdo) */}
 			<FundoAnimado />
 			<header className="fixed top-0 left-0 right-0 z-50 border-b border-green-500 shadow-md bg-gradient-to-r from-green-600 via-green-600/90 to-green-700">
-				<div className="relative flex items-center justify-between h-16 px-4 lg:px-6">
+				<div className="relative flex items-center justify-between h-16 px-4 pr-8 lg:px-6">
 					{/* Título centralizado */}
 					<div className="absolute inset-0 flex items-center justify-center pointer-events-none">
 						<h1 className="font-inter text-xl sm:text-2xl lg:text-3xl font-extrabold tracking-wide leading-none text-white drop-shadow-[0_3px_6px_rgba(0,0,0,0.35)]">
@@ -464,7 +464,7 @@ export default function PrazosSAP() {
 						</Button>
 						<div className="flex items-center gap-3">
 							<div
-								className="flex items-center justify-center px-2 overflow-hidden font-bold text-center bg-white shadow-md cursor-pointer rounded-xl hover:shadow-lg hover:bg-gray-50"
+								className="flex items-center justify-center px-2 ml-4 overflow-hidden font-bold text-center bg-white shadow-md cursor-pointer rounded-xl hover:shadow-lg hover:bg-gray-50"
 								onClick={() => navigate('/obras')}
 								title="Ir para Obras"
 								role="button"
