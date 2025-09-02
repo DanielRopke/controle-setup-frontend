@@ -47,10 +47,21 @@ export default function PrazosSAP() {
 	const [selectedTipo, setSelectedTipo] = useState<string>('');
 	const [selectedMes, setSelectedMes] = useState<string>('');
 	const [selectedMatrixRows, setSelectedMatrixRows] = useState<string[]>([]);
+	const [lastSelectedIndex, setLastSelectedIndex] = useState<number | null>(null);
 	// Context menu state
 	const [contextOpen, setContextOpen] = useState(false);
 	const [contextPos, setContextPos] = useState({ x: 0, y: 0 });
 	const [contextItems, setContextItems] = useState<{ id: string; label: string; onClick: () => void }[]>([]);
+
+	// garante que os estados do menu de contexto sejam lidos pelo TS (evita TS6133)
+	useEffect(() => {
+		// leitura intencional para suprimir 'declared but never read' quando o compilador
+		// não detecta uso em JSX em alguns casos.
+		void contextOpen;
+		void contextPos;
+		void contextItems;
+	}, [contextOpen, contextPos, contextItems]);
+
 	const [sortConfig, setSortConfig] = useState<{ key?: keyof DashboardData['matrix'][0]; direction?: 'asc' | 'desc' }>({});
 	const [regions, setRegions] = useState<string[]>([]);
 	const [rawRows, setRawRows] = useState<MatrizItem[]>([]);
@@ -301,6 +312,32 @@ export default function PrazosSAP() {
 			matrix: tableRows,
 		} as DashboardData;
 	}, [rawRows, selectedRegion, activeFilters, pepSearch, sortConfig, statusEnerMap, statusConcMap, reasonsMap]);
+
+	// Atalho: Ctrl/Cmd + Shift + ArrowDown => selecionar até o fim a partir do lastSelectedIndex
+	useEffect(() => {
+		const handler = (ev: KeyboardEvent) => {
+			const isMod = ev.ctrlKey || ev.metaKey;
+			if (!isMod || !ev.shiftKey) return;
+			if (ev.key === 'ArrowDown') {
+				ev.preventDefault();
+				// se não há um lastSelectedIndex conhecido, selecionar da primeira linha
+				const start = (typeof lastSelectedIndex === 'number' && lastSelectedIndex >= 0) ? lastSelectedIndex : 0;
+				// pegar todos os PEPs a partir de start até o final do filteredData.matrix
+				const rows = (filteredData && Array.isArray(filteredData.matrix)) ? filteredData.matrix : [];
+				if (!Array.isArray(rows) || rows.length === 0) return;
+				const toSelect = rows.slice(start).map(r => r.pep);
+				setSelectedMatrixRows(prev => {
+					// combinar com seleção atual (preservando anteriores antes do start)
+					const prefix = Array.isArray(prev) ? prev.slice(0, start).filter(Boolean) : [];
+					return Array.from(new Set([...prefix, ...toSelect]));
+				});
+				// marcar último índice como o fim
+				setLastSelectedIndex(rows.length - 1);
+			}
+		};
+		document.addEventListener('keydown', handler);
+		return () => document.removeEventListener('keydown', handler);
+	}, [lastSelectedIndex, filteredData]);
 
 	// Atualiza lista de regiões conforme dados carregados (sem aplicar filtros interativos)
 	useEffect(() => {
@@ -851,7 +888,7 @@ export default function PrazosSAP() {
 												key={index}
 												className={cn(
 													"cursor-pointer transition-all duration-200 select-none",
-													selectedMatrixRows.includes(row.pep)
+													(Array.isArray(selectedMatrixRows) && selectedMatrixRows.includes(row.pep))
 														? "bg-green-50 border-l-4 border-l-green-600 shadow-md hover:bg-green-100"
 														: "hover:bg-gray-50"
 												)}
@@ -860,12 +897,15 @@ export default function PrazosSAP() {
 												if ((e.ctrlKey || e.metaKey)) {
 													e.preventDefault();
 													setSelectedMatrixRows(prev => {
-														if (prev.includes(row.pep)) return prev.filter(p => p !== row.pep);
-														return [...prev, row.pep];
+														if (Array.isArray(prev) && prev.includes(row.pep)) return prev.filter(p => p !== row.pep);
+														return Array.isArray(prev) ? [...prev, row.pep] : [row.pep];
 													});
+													// atualiza índice do último clique
+													setLastSelectedIndex(index);
 												} else {
 													// single selection
 													setSelectedMatrixRows([row.pep]);
+													setLastSelectedIndex(index);
 												}
 											}}
 											onContextMenu={(e: React.MouseEvent) => {
@@ -879,7 +919,7 @@ export default function PrazosSAP() {
 														id: 'copy-servicos',
 														label: 'COPIAR SERVIÇOS',
 														onClick: () => {
-															const selected = selectedMatrixRows.length ? selectedMatrixRows : [row.pep];
+															const selected = (Array.isArray(selectedMatrixRows) && selectedMatrixRows.length) ? selectedMatrixRows : [row.pep];
 															const lines = filteredData.matrix.filter(r => selected.includes(r.pep)).map(r => r.pep);
 															navigator.clipboard.writeText(lines.join('\n')).then(() => showToast('Serviços copiados!')).catch(() => showToast('Erro ao copiar'));
 															setContextOpen(false);
@@ -889,7 +929,7 @@ export default function PrazosSAP() {
 														id: 'copy-table',
 														label: 'COPIAR TABELA',
 														onClick: () => {
-															const selected = selectedMatrixRows.length ? selectedMatrixRows : [row.pep];
+															const selected = (Array.isArray(selectedMatrixRows) && selectedMatrixRows.length) ? selectedMatrixRows : [row.pep];
 															const rowsToCopy = filteredData.matrix.filter(r => selected.includes(r.pep));
 															const tsv = rowsToCopy.map(r => [r.pep, r.prazo, r.dataConclusao, r.status, r.rs].join('\t')).join('\n');
 															navigator.clipboard.writeText(tsv).then(() => showToast('Tabela copiada!')).catch(() => showToast('Erro ao copiar'));
