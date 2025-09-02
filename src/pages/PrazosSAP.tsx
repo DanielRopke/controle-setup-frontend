@@ -1,365 +1,871 @@
-// src/pages/PrazosSAP.tsx
-// import React from 'react' // removido, não utilizado
-// @ts-ignore
+// Dashboard consolidado: conteúdo migrado da antiga PrazosSAP1
+import React, { useEffect, useState, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { Button } from "../components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../components/ui/table";
+import { Copy, RotateCcw, Menu, ChevronUp, ChevronDown, ChevronsUpDown } from 'lucide-react';
+import { ChartContainer } from "../components/ui/chart";
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, LabelList } from 'recharts';
 import html2canvas from 'html2canvas';
-import { FundoAnimado } from '../components/FundoAnimado'
-import { useNavigate } from 'react-router-dom'
-import { SidebarFiltros } from '../components/SidebarFiltros'
-import { GraficoBarras } from '../components/GraficoBarras'
-import { TabelaMatriz } from '../components/TabelaMatriz'
-import { useFiltros } from '../hooks/useFiltros'
-import { useDadosGraficos } from '../hooks/useDadosGraficos'
-import { processarDados } from '../utils/processarDados'
-import logo from '../assets/logo.png'
-import filtroLimpo from '../assets/filtro-limpo.png'
+import * as XLSX from 'xlsx';
+import { DateRangeFilter } from '../components/DateRangeFilter';
+import { PEPSearch } from '../components/PEPSearch';
+import { cn } from "../lib/utils";
+import { getMatrizDados, getStatusEnerPep, getStatusConcPep, getStatusServicoContagem, getStatusSapUnicos, getTiposUnicos, getMesesConclusao } from '../services/api';
+import type { MatrizItem } from '../services/api';
+import { showToast } from '../components/toast';
+import LogoSetup from '../assets/LogoSetup1.png';
+import { FundoAnimado } from '../components/FundoAnimado';
 
-import {
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  Tooltip,
-  ResponsiveContainer,
-  CartesianGrid,
-  LabelList
-} from 'recharts'
+interface DashboardData {
+	statusENER: { name: string; value: number; qtd: number }[]; // Valor (R$) e quantidade
+	statusCONC: { name: string; value: number; qtd: number }[];
+	comparison: { name: string; value: number; qtd: number }[];
+	reasons: { name: string; value: number; qtd: number }[];
+	matrix: { pep: string; prazo: string; dataConclusao: string; status: string; rs: number }[];
+}
+
+// Tipo mínimo para o renderer de rótulos das barras
+type BarLabelProps = {
+	x?: number | string;
+	y?: number | string;
+	width?: number | string;
+	value?: number | string;
+	index?: number;
+};
 
 export default function PrazosSAP() {
-  const navigate = useNavigate()
-  const {
-    seccionaisSelecionadas,
-    toggleSeccional,
-    statusSap,
-    setStatusSap,
-    tipo,
-    setTipo,
-    mes,
-    setMes
-  } = useFiltros()
+	const navigate = useNavigate();
+	const [selectedRegion, setSelectedRegion] = useState<string>('all');
+	const [sidebarOpen, setSidebarOpen] = useState(false);
+	const [pepSearch, setPepSearch] = useState('');
+	const [selectedStartDate, setSelectedStartDate] = useState<Date | undefined>(undefined);
+	const [selectedEndDate, setSelectedEndDate] = useState<Date | undefined>(undefined);
+	const [selectedStatusSap, setSelectedStatusSap] = useState<string>('');
+	const [selectedTipo, setSelectedTipo] = useState<string>('');
+	const [selectedMes, setSelectedMes] = useState<string>('');
+	const [selectedMatrixRow, setSelectedMatrixRow] = useState<string | null>(null);
+	const [sortConfig, setSortConfig] = useState<{ key?: keyof DashboardData['matrix'][0]; direction?: 'asc' | 'desc' }>({});
+	const [regions, setRegions] = useState<string[]>([]);
+	const [rawRows, setRawRows] = useState<MatrizItem[]>([]);
+	const [statusEnerMap, setStatusEnerMap] = useState<Record<string, Record<string, number>>>({});
+	const [statusConcMap, setStatusConcMap] = useState<Record<string, Record<string, number>>>({});
+	const [reasonsMap, setReasonsMap] = useState<Record<string, Record<string, number>>>({});
+	const [statusSapList, setStatusSapList] = useState<string[]>([]);
+	const [tiposList, setTiposList] = useState<string[]>([]);
+	const [mesesList, setMesesList] = useState<string[]>([]);
 
-  const {
-    seccionais,
-    statusSapList,
-    tiposList,
-    mesesList,
-    graficoEner,
-    graficoConc,
-    graficoServico,
-    graficoSeccionalRS,
-    matriz
-  } = useDadosGraficos({ seccionais: seccionaisSelecionadas, statusSap, tipo, mes })
+	// Título da janela quando nesta página
+	useEffect(() => {
+		const prevTitle = document.title;
+		document.title = 'Prazos SAP';
+		return () => {
+			document.title = prevTitle;
+		};
+	}, []);
 
+	// Estados para filtros interativos
+	const [activeFilters, setActiveFilters] = useState<Record<string, string>>({});
 
+	const clearFilters = () => {
+		setSelectedRegion('all');
+		setActiveFilters({});
+		setSelectedStartDate(undefined);
+		setSelectedEndDate(undefined);
+		setPepSearch('');
+		setSelectedStatusSap('');
+		setSelectedTipo('');
+		setSelectedMes('');
+		showToast('Filtros limpos!');
+	};
 
+	const clearPepSearch = () => {
+		setPepSearch('');
+		showToast('Pesquisa PEP limpa!');
+	};
 
-  // Ordenação decrescente garantida
-  const dadosEner = processarDados(graficoEner, false, { seccionais: seccionaisSelecionadas })
-    .slice().sort((a, b) => (b.count ?? 0) - (a.count ?? 0));
-  const dadosConc = processarDados(graficoConc, true, { seccionais: seccionaisSelecionadas })
-    .slice().sort((a, b) => (b.count ?? 0) - (a.count ?? 0));
-  // Motivo de Não Fechado: agrupa por status, somando todas as seccionais selecionadas
-  const dadosServico = Array.isArray(graficoServico)
-    ? graficoServico
-        .filter(item => !seccionaisSelecionadas.length || seccionaisSelecionadas.includes(item.seccional))
-        .reduce((acc, item) => {
-          const found = acc.find(d => d.status === item.status);
-          if (found) {
-            found.count += item.count;
-          } else {
-            acc.push({ status: item.status, count: item.count });
-          }
-          return acc;
-        }, [] as { status: string; count: number }[])
-        .slice().sort((a, b) => (b.count ?? 0) - (a.count ?? 0))
-    : [];
-  // Filtra os dados conforme os filtros aplicados
-  const graficoSeccionalRSFiltrado = Array.isArray(graficoSeccionalRS)
-    ? graficoSeccionalRS.filter(item => {
-        const seccionalMatch = !seccionaisSelecionadas.length || seccionaisSelecionadas.includes(item.seccional);
-        const statusMatch = !statusSap || item.statusSap === statusSap;
-        const tipoMatch = !tipo || item.tipo === tipo;
-        const mesMatch = !mes || item.mes === mes;
-        return seccionalMatch && statusMatch && tipoMatch && mesMatch;
-      })
-    : [];
-  const graficoSeccionalRSOrdenado = Array.isArray(graficoSeccionalRSFiltrado)
-    ? graficoSeccionalRSFiltrado.slice().sort((a, b) => (b.totalRS ?? 0) - (a.totalRS ?? 0))
-    : [];
+	// Ordenação
+	const handleSort = (key: keyof DashboardData['matrix'][0]) => {
+		let direction: 'asc' | 'desc' = 'asc';
+		if (sortConfig.key === key && sortConfig.direction === 'asc') {
+			direction = 'desc';
+		}
+		setSortConfig({ key, direction });
+	};
 
-  // Função para tratar clique nas barras dos gráficos
-  const handleBarClick = (item: { status?: string, count?: number }, tipoGrafico: string) => {
-    if (!item) return;
-    if (tipoGrafico === 'ener' && item.status) {
-      setStatusSap(item.status);
-    }
-    if (tipoGrafico === 'conc' && item.status) {
-      setTipo(item.status);
-    }
-    // Adapte para outros gráficos conforme necessário
-  };
+	const getSortIcon = (columnKey: keyof DashboardData['matrix'][0]) => {
+		if (sortConfig.key !== columnKey) {
+			return <ChevronsUpDown className="w-4 h-4 text-gray-500" />;
+		}
+		return sortConfig.direction === 'asc'
+			? <ChevronUp className="w-4 h-4 text-green-600" />
+			: <ChevronDown className="w-4 h-4 text-green-600" />;
+	};
 
+	// Filtros interativos
+	const handleChartClick = (chartType: 'statusENER' | 'statusCONC' | 'reasons' | 'comparison', label: string) => {
+		const newFilters = { ...activeFilters };
+		if (newFilters[chartType] === label) {
+			delete newFilters[chartType];
+			console.log(`[TOAST] Filtro removido: ${label}`);
+		} else {
+			newFilters[chartType] = label;
+			console.log(`[TOAST] Filtro aplicado: ${label}`);
+		}
+		setActiveFilters(newFilters);
+	};
 
+	// Refs dos gráficos
+	const statusENERRef = useRef<HTMLDivElement>(null);
+	const comparisonRef = useRef<HTMLDivElement>(null);
+	const statusCONCRef = useRef<HTMLDivElement>(null);
+	const reasonsRef = useRef<HTMLDivElement>(null);
 
-  const formatarValorRS = (valor: number) =>
-    valor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', minimumFractionDigits: 0 })
+	// Renderizador de rótulos: quando a barra estiver ativa, usa preto e negrito
+	const makeLabelRenderer = (
+		dataArr: { name: string; qtd: number }[],
+		isActive: (name: string) => boolean,
+	) => (props: BarLabelProps) => {
+		const { x = 0, y = 0, width = 0, value, index = 0 } = props || {} as BarLabelProps;
+		const item = dataArr?.[index];
+		const active = item ? isActive(item.name) : false;
+		const cx = Number(x) + Number(width) / 2;
+		const cy = Number(y) - 6;
+		return (
+			<text
+				x={cx}
+				y={cy}
+				textAnchor="middle"
+				fill={active ? '#111827' : 'hsl(var(--foreground))'}
+				fontWeight={active ? 700 : 400}
+				fontSize={12}
+			>
+				{value}
+			</text>
+		);
+	};
 
-  return (
-    <>
-      <div
-        style={{
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          bottom: 0,
-          right: 16,
-          zIndex: 0,
-          width: '100vw',
-          height: '100vh',
-          pointerEvents: 'none',
-          clipPath: 'inset(0px 16px 0px 0px)'
-        }}
-      >
-        <FundoAnimado />
-      </div>
-      <div className="flex flex-col min-h-screen bg-gray-900 scrollbar-prazossap" style={{ position: 'relative', overflow: 'auto' }}>
-        <style>{`
-          .scrollbar-prazossap::-webkit-scrollbar {
-            width: 12px;
-            background: #4ade80;
-          }
-          .scrollbar-prazossap::-webkit-scrollbar-thumb {
-            background: #a3a3a3;
-            border-radius: 8px;
-          }
-          .scrollbar-prazossap {
-            scrollbar-width: thin;
-            scrollbar-color: #a3a3a3 #4ade80;
-          }
-        `}</style>
-        <header
-          className="fixed top-0 left-0 z-[100] flex items-center px-6 shadow-md"
-          style={{
-            background: 'linear-gradient(135deg, rgba(74,222,128,0.85) 0%, rgba(34,197,94,0.85) 100%)',
-            height: '72px',
-            width: 'calc(100% - 16px)',
-            backdropFilter: 'blur(2px)',
-            WebkitBackdropFilter: 'blur(2px)'
-          }}
-        >
-          <button
-            onClick={() => navigate('/obras')}
-            className="botao-home ml-[12px] rounded-full bg-gray-800 shadow-3d flex items-center justify-center"
-            title="Voltar para menu"
-            aria-label="Voltar para menu"
-            type="button"
-            style={{ width: 160, height: 48, padding: 0 }}
-          >
-            <img src={logo} alt="Logo Empresa" className="logo-botao" />
-          </button>
-          <button
-            onClick={() => {
-              setStatusSap('');
-              setTipo('');
-              setMes('');
-              seccionaisSelecionadas.forEach(s => toggleSeccional(s));
-            }}
-            className="botao-home ml-[12px] rounded-full bg-gray-800 shadow flex items-center justify-center"
-            title="Limpar todos os filtros"
-            aria-label="Limpar todos os filtros"
-            type="button"
-            style={{ width: 48, height: 48, padding: 0, minWidth: 48, minHeight: 48, borderRadius: '50%', marginLeft: 28 }}
-          >
-            <img src={filtroLimpo} alt="Limpar filtros" style={{ width: 28, height: 28 }} />
-          </button>
-          <div
-            className="ml-[12px] rounded-full bg-gray-800 border-2 border-gray-700 shadow-3d flex flex-col items-center justify-center font-bold text-gray-100 text-lg"
-            style={{ width: 160, height: 48, backgroundColor: '#fff' }}
-          >
-            <span>Valor Total</span>
-            <span className="text-base font-semibold text-green-700" style={{ fontWeight: 600 }}>
-              {formatarValorRS(
-                Array.isArray(graficoSeccionalRSOrdenado)
-                  ? graficoSeccionalRSOrdenado.reduce((acc, cur) => acc + (cur.totalRS || 0), 0)
-                  : 0
-              )}
-            </span>
-          </div>
-          <h1 className="flex-grow font-serif text-2xl font-bold text-center text-white">
-            Prazos SAP
-          </h1>
-          <div style={{ minWidth: 0, flex: '0 0 384px', display: 'flex', justifyContent: 'flex-end', gap: '12px', marginRight: '16px' }}>
-            <div
-              className="flex flex-col items-center justify-center text-lg font-bold text-gray-100 bg-gray-800 border-2 border-gray-700 rounded-full shadow-3d"
-              style={{ width: 160, height: 48, backgroundColor: '#fff' }}
-            >
-              <span>Valor Total</span>
-              <span className="text-base font-semibold text-green-700" style={{ fontWeight: 600 }}>
-                {formatarValorRS(
-                  Array.isArray(graficoSeccionalRSOrdenado)
-                    ? graficoSeccionalRSOrdenado.reduce((acc, cur) => acc + (cur.totalRS || 0), 0)
-                    : 0
-                )}
-              </span>
-            </div>
-            <div
-              className="flex flex-col items-center justify-center text-lg font-bold text-gray-100 bg-gray-800 border-2 border-gray-700 rounded-full shadow-3d"
-              style={{ width: 160, height: 48, backgroundColor: '#fff' }}
-            >
-              <span>Qtd de PEP</span>
-              <span className="text-base font-semibold text-green-700" style={{ fontWeight: 600 }}>
-                {Array.isArray(graficoSeccionalRSOrdenado)
-                  ? graficoSeccionalRSOrdenado.reduce((acc, cur) => acc + (cur.totalPEP || 0), 0)
-                  : 0}
-              </span>
-            </div>
-          </div>
-        </header>
-        <div style={{ height: '88px' }} />
-        <div className="flex flex-1 gap-8 p-6">
-          {/* Sidebar fixo */}
-          <div
-            style={{
-              position: 'fixed',
-              top: 88,
-              left: 0,
-              zIndex: 50,
-              width: 185,
-              height: 'calc(100vh - 88px - 16px)', // 16px de espaçamento inferior
-              minHeight: 400,
-              marginBottom: 0,
-              display: 'flex',
-              flexDirection: 'column',
-              background: 'linear-gradient(135deg, rgba(74,222,128,0.85) 0%, rgba(34,197,94,0.85) 100%)',
-              borderTopRightRadius: '1.5rem',
-              borderBottomRightRadius: '1.5rem',
-              overflow: 'hidden',
-              backdropFilter: 'blur(2px)',
-              WebkitBackdropFilter: 'blur(2px)',
-            }}
-          >
-            <SidebarFiltros
-              seccionais={seccionais}
-              seccionaisSelecionadas={seccionaisSelecionadas}
-              toggleSeccional={toggleSeccional}
-              statusSapList={statusSapList}
-              tiposList={tiposList}
-              mesesList={mesesList}
-              statusSap={statusSap}
-              tipo={tipo}
-              mes={mes}
-              setStatusSap={setStatusSap}
-              setTipo={setTipo}
-              setMes={setMes}
-              className="shadow-3d p-0 h-full min-h-[400px] flex-1"
-            />
-            <div style={{ height: '16px' }} />
-          </div>
-          {/* Espaço para o conteúdo não ficar atrás do sidebar */}
-          <div style={{ width: 201 }} />
-          <div className="flex flex-col flex-1 gap-8">
-            <div className="flex gap-8">
-              <div className="flex flex-col flex-1 gap-8">
-                <div className="z-[10]">
-                  <GraficoBarras
-                    titulo="Status ENER"
-                    dados={dadosEner}
-                    onBarClick={item => handleBarClick(item, 'ener')}
-                  />
-                </div>
-                <div style={{ height: '16px' }} />
-                <div className="z-[10]">
-                  <GraficoBarras
-                    titulo="Status CONC"
-                    dados={dadosConc}
-                    onBarClick={item => handleBarClick(item, 'conc')}
-                  />
-                </div>
-              </div>
-              <div style={{ width: '16px' }} />
-              <div className="flex flex-col flex-1 gap-8">
-                <div className="p-6 rounded-3xl shadow-lg h-[280px] flex flex-col z-[10] relative" style={{background: 'linear-gradient(135deg, #bbf7d0 0%, #a7f3d0 100%)', borderRadius: '1.5rem', marginRight: '16px'}}>
-                  <button
-                    title="Copiar imagem do gráfico"
-                    onClick={async e => {
-                      e.stopPropagation();
-                      const graficoDiv = e.currentTarget.parentElement;
-                      if (!graficoDiv) return;
-                      const html2canvas = (await import('html2canvas')).default;
-                  html2canvas(graficoDiv, {}).then((canvas: HTMLCanvasElement) => {
-                    canvas.toBlob((blob: Blob | null) => {
-                      if (blob) {
-                        const item = new ClipboardItem({ 'image/png': blob });
-                        navigator.clipboard.write([item]);
-                      }
-                    });
-                  });
-                    }}
-                    style={{ position: 'absolute', top: 12, right: 12, zIndex: 20, width: 32, height: 32, background: '#fff', borderRadius: 8, border: '2px solid #4ade80', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 2px 8px rgba(0,0,0,0.08)' }}
-                  >
-                    {/* Ícone clássico de copiar (duas folhas) */}
-                    <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
-                      <rect x="6" y="6" width="9" height="12" rx="2" fill="#bbf7d0" stroke="#22c55e" strokeWidth="1.5" />
-                      <rect x="3" y="3" width="9" height="12" rx="2" fill="#fff" stroke="#22c55e" strokeWidth="1.2" />
-                    </svg>
-                  </button>
-                  <h2 className="text-center font-semibold mb-4 font-serif text-gray-700 text-[20px]">
-                    Valor x Qtd PEP Por Seccional
-                  </h2>
-                  <ResponsiveContainer width="100%" height="100%">
-                      <BarChart data={graficoSeccionalRSOrdenado} margin={{ top: 20, right: 30, left: 30, bottom: 40 }}
-                        onClick={e => {
-                      if (e && 'activePayload' in e && Array.isArray(e.activePayload) && e.activePayload[0]) {
-                        handleBarClick(e.activePayload[0].payload, 'seccional');
-                      }
-                        }}
-                      >
-                      <foreignObject x={0} y={0} width="100%" height="100%">
-                        <div style={{width: '100%', height: '100%', background: 'rgba(255,255,255,0.9)', borderRadius: 20, backdropFilter: 'blur(2px)', WebkitBackdropFilter: 'blur(16px)'}} />
-                      </foreignObject>
-                      <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis dataKey="seccional" tick={{ fill: '#4a4a4a' }} />
-                      <YAxis hide />
-                      <Tooltip
-                        formatter={(value: number, name: string) => [
-                          name === 'totalRS' ? formatarValorRS(value) : value,
-                          name === 'totalRS' ? 'R$' : 'PEP',
-                        ]}
-                      />
-                      <Bar dataKey="totalRS" fill="#3182ce">
-                        <LabelList
-                          dataKey="totalRS"
-                          position="top"
-                          fill="#333"
-                          fontSize={12}
-                        />
-                      </Bar>
-                      <Bar dataKey="scaledPEP" fill="#4ade80">
-                        <LabelList dataKey="totalPEP" position="top" fill="#333" fontSize={12} />
-                      </Bar>
-                    </BarChart>
-                  </ResponsiveContainer>
-                </div>
-                <div style={{ height: '16px' }} />
-                <div style={{ marginRight: '16px' }}>
-                  <div className="relative z-[20]">
-                    <div className="absolute top-0 left-0 w-full h-[48px] rounded-t-3xl bg-white/90 backdrop-blur-md z-[30] pointer-events-none" />
-                    <div className="relative z-[40]">
-                      <GraficoBarras
-                        titulo="Motivo de Não Fechado"
-                        dados={dadosServico}
-                        onBarClick={item => handleBarClick(item, 'servico')}
-                      />
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-            <div style={{ position: 'relative', zIndex: 40, marginRight: '16px' }}>
-              <TabelaMatriz dados={matriz} />
-            </div>
-          </div>
-        </div>
-      </div>
-    </>
-  )
+	// Formatação de valores curtos com 2 casas decimais e sufixos Mi/Mil
+	const numberFmt2 = React.useMemo(() => new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }), []);
+	const formatValorShort = (n: number) => {
+		const abs = Math.abs(n);
+		if (abs >= 1_000_000) return `${numberFmt2.format(n / 1_000_000)} Mi`;
+		if (abs >= 1_000) return `${numberFmt2.format(n / 1_000)} Mil`;
+		return numberFmt2.format(n);
+	};
+
+	// Renderizador para rótulos de Valor (barra azul) no comparativo
+	const makeValueLabelRenderer = (
+		dataArr: { name: string; value: number }[],
+		isActive: (name: string) => boolean,
+	) => (props: BarLabelProps) => {
+		const { x = 0, y = 0, width = 0, value, index = 0 } = props || {} as BarLabelProps;
+		const item = dataArr?.[index];
+		const active = item ? isActive(item.name) : false;
+		const cx = Number(x) + Number(width) / 2;
+		const cy = Number(y) - 6;
+		const v = Number(value) || 0;
+		return (
+			<text
+				x={cx}
+				y={cy}
+				textAnchor="middle"
+				fill={active ? '#111827' : 'hsl(var(--foreground))'}
+				fontWeight={active ? 700 : 400}
+				fontSize={12}
+			>
+				{formatValorShort(v)}
+			</text>
+		);
+	};
+
+	// Dados calculados
+	const filteredData = React.useMemo(() => {
+		// Sinais de suporte de campos na matriz
+		const anyHasEner = rawRows.some(r => (r.statusEner || '').trim());
+		const anyHasConc = rawRows.some(r => (r.statusConc || '').trim());
+		const anyHasMotivos = rawRows.some(r => (r.statusServico || '').trim());
+
+		// 1) Base de linhas para OUTROS gráficos e TABELA: respeita comparação e região
+		const regionFilterForOthers = (activeFilters.comparison || (selectedRegion !== 'all' ? selectedRegion : undefined)) as string | undefined;
+		let rowsForOthers = rawRows;
+		if (regionFilterForOthers) rowsForOthers = rowsForOthers.filter(r => (r.seccional || '').trim() === regionFilterForOthers);
+		if (activeFilters.statusENER && anyHasEner) rowsForOthers = rowsForOthers.filter(r => (r.statusEner || '').trim() === activeFilters.statusENER);
+		if (activeFilters.statusCONC && anyHasConc) rowsForOthers = rowsForOthers.filter(r => (r.statusConc || '').trim() === activeFilters.statusCONC);
+		if (activeFilters.reasons && anyHasMotivos) rowsForOthers = rowsForOthers.filter(r => (r.statusServico || '').trim() === activeFilters.reasons);
+		if (pepSearch.trim()) rowsForOthers = rowsForOthers.filter(r => (r.pep || '').toLowerCase().includes(pepSearch.toLowerCase()));
+
+		// 2) Base de linhas para COMPARATIVO: NÃO aplicar filtro de comparação nem selectedRegion, apenas demais filtros
+		let rowsForComparison = rawRows;
+		if (activeFilters.statusENER && anyHasEner) rowsForComparison = rowsForComparison.filter(r => (r.statusEner || '').trim() === activeFilters.statusENER);
+		if (activeFilters.statusCONC && anyHasConc) rowsForComparison = rowsForComparison.filter(r => (r.statusConc || '').trim() === activeFilters.statusCONC);
+		if (activeFilters.reasons && anyHasMotivos) rowsForComparison = rowsForComparison.filter(r => (r.statusServico || '').trim() === activeFilters.reasons);
+
+		// 2) Agregações serão feitas inline abaixo
+
+	// Se a matriz não tiver os campos (produção antiga), usar fallback dos mapas por contagem
+	const hasEner = anyHasEner;
+	const hasConc = anyHasConc;
+	const hasMotivos = anyHasMotivos;
+
+		const sumFromMap = (map: Record<string, Record<string, number>>) => {
+			const arr: { name: string; value: number; qtd: number }[] = [];
+			const regionFilter = (activeFilters.comparison || (selectedRegion !== 'all' ? selectedRegion : undefined)) as string | undefined;
+			Object.entries(map).forEach(([status, byRegion]) => {
+				let count = 0;
+				if (regionFilter) {
+					count = byRegion[regionFilter] || 0;
+				} else {
+					count = Object.values(byRegion).reduce((s, n) => s + (n || 0), 0);
+				}
+				arr.push({ name: status, value: count, qtd: count });
+			});
+			return arr.sort((a, b) => b.qtd - a.qtd);
+		};
+
+		const statusENER = hasEner ? (function() { const m = new Map<string, { valor: number; qtd: number }>(); for (const r of rowsForOthers) { const k = (r.statusEner || '').trim(); if (!k) continue; const v = typeof r.valor === 'number' ? r.valor : parseFloat(String(r.valor || '0').replace(/R\$\s?/, '').replace(/\./g, '').replace(/,/g, '.')) || 0; const cur = m.get(k) || { valor: 0, qtd: 0 }; m.set(k, { valor: cur.valor + v, qtd: cur.qtd + 1 }); } return Array.from(m.entries()).map(([name, obj]) => ({ name, value: obj.valor, qtd: obj.qtd })).sort((a, b) => b.qtd - a.qtd); })() : sumFromMap(statusEnerMap);
+		const statusCONC = hasConc ? (function() { const m = new Map<string, { valor: number; qtd: number }>(); for (const r of rowsForOthers) { const k = (r.statusConc || '').trim(); if (!k) continue; const v = typeof r.valor === 'number' ? r.valor : parseFloat(String(r.valor || '0').replace(/R\$\s?/, '').replace(/\./g, '').replace(/,/g, '.')) || 0; const cur = m.get(k) || { valor: 0, qtd: 0 }; m.set(k, { valor: cur.valor + v, qtd: cur.qtd + 1 }); } return Array.from(m.entries()).map(([name, obj]) => ({ name, value: obj.valor, qtd: obj.qtd })).sort((a, b) => b.qtd - a.qtd); })() : sumFromMap(statusConcMap);
+		const reasons = hasMotivos ? (function() { const m = new Map<string, { valor: number; qtd: number }>(); for (const r of rowsForOthers) { const k = (r.statusServico || '').trim(); if (!k) continue; const v = typeof r.valor === 'number' ? r.valor : parseFloat(String(r.valor || '0').replace(/R\$\s?/, '').replace(/\./g, '').replace(/,/g, '.')) || 0; const cur = m.get(k) || { valor: 0, qtd: 0 }; m.set(k, { valor: cur.valor + v, qtd: cur.qtd + 1 }); } return Array.from(m.entries()).map(([name, obj]) => ({ name, value: obj.valor, qtd: obj.qtd })).sort((a, b) => b.qtd - a.qtd); })() : sumFromMap(reasonsMap);
+		const comparison = (function() { const m = new Map<string, { valor: number; qtd: number }>(); for (const r of rowsForComparison) { const s = (r.seccional || '').trim(); if (!s) continue; const v = typeof r.valor === 'number' ? r.valor : parseFloat(String(r.valor || '0').replace(/R\$\s?/, '').replace(/\./g, '').replace(/,/g, '.')) || 0; const cur = m.get(s) || { valor: 0, qtd: 0 }; m.set(s, { valor: cur.valor + v, qtd: cur.qtd + 1 }); } return Array.from(m.entries()).map(([name, obj]) => ({ name, value: obj.valor, qtd: obj.qtd })).sort((a, b) => b.qtd - a.qtd); })();
+
+		// 3) Linhas da matriz (após filtros), com sort
+		let tableRows: DashboardData['matrix'] = rowsForOthers.map(r => {
+			const valorNum = typeof r.valor === 'number' ? r.valor : parseFloat(String(r.valor || '0').replace(/R\$\s?/, '').replace(/\./g, '').replace(/,/g, '.')) || 0;
+			return {
+				pep: String(r.pep || ''),
+				prazo: String(r.prazo || ''),
+				dataConclusao: String(r.dataConclusao || ''),
+				status: String(r.statusSap || ''),
+				rs: valorNum,
+			};
+		});
+
+		if (sortConfig.key) {
+			// Helpers para ordenar datas em formato dd/mm/aaaa (ou outros parseáveis)
+			const parseDate = (s: string): number => {
+				if (!s) return Number.NaN;
+				const m = s.trim().match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+				if (m) {
+					const d = Number(m[1]);
+					const mo = Number(m[2]) - 1;
+					const y = Number(m[3]);
+					const dt = new Date(y, mo, d);
+					return dt.getTime();
+				}
+				const t = Date.parse(s);
+				return Number.isNaN(t) ? Number.NaN : t;
+			};
+
+			const compareNumbers = (x: number, y: number) => {
+				if (Number.isNaN(x) && Number.isNaN(y)) return 0;
+				if (Number.isNaN(x)) return 1; // valores vazios ao final
+				if (Number.isNaN(y)) return -1;
+				return x - y;
+			};
+
+			tableRows = [...tableRows].sort((a, b) => {
+				const key = sortConfig.key!;
+				const dir = sortConfig.direction === 'asc' ? 1 : -1;
+				const aValue = a[key];
+				const bValue = b[key];
+
+				if (key === 'rs') {
+					return dir * ((aValue as number) - (bValue as number));
+				}
+
+				if (key === 'prazo' || key === 'dataConclusao') {
+					const da = parseDate(String(aValue));
+					const db = parseDate(String(bValue));
+					return dir * compareNumbers(da, db);
+				}
+
+				const aStr = String(aValue).toLowerCase();
+				const bStr = String(bValue).toLowerCase();
+				if (aStr < bStr) return -1 * dir;
+				if (aStr > bStr) return 1 * dir;
+				return 0;
+			});
+		}
+
+		return {
+			statusENER,
+			statusCONC,
+			comparison,
+			reasons,
+			matrix: tableRows,
+		} as DashboardData;
+	}, [rawRows, selectedRegion, activeFilters, pepSearch, sortConfig, statusEnerMap, statusConcMap, reasonsMap]);
+
+	// Atualiza lista de regiões conforme dados carregados (sem aplicar filtros interativos)
+	useEffect(() => {
+		const m = new Map<string, number>();
+		for (const r of rawRows) {
+			const s = (r.seccional || '').trim();
+			if (!s) continue;
+			const v = typeof r.valor === 'number' ? r.valor : parseFloat(String(r.valor || '0').replace(/R\$\s?/, '').replace(/\./g, '').replace(/,/g, '.')) || 0;
+			m.set(s, (m.get(s) || 0) + v);
+		}
+		const regionList = Array.from(m.entries()).sort((a, b) => b[1] - a[1]).map(([name]) => name);
+		setRegions(regionList);
+	}, [rawRows]);
+
+	// Carregar listas dos filtros (Status SAP, Tipo, Mês)
+	useEffect(() => {
+		let isCancelled = false;
+		Promise.all([getStatusSapUnicos(), getTiposUnicos(), getMesesConclusao()])
+			.then(([s1, s2, s3]) => {
+				if (isCancelled) return;
+				setStatusSapList(s1.data || []);
+				setTiposList(s2.data || []);
+				setMesesList(s3.data || []);
+			})
+			.catch(err => {
+				console.error('Erro ao carregar listas de filtros:', err);
+				setStatusSapList([]);
+				setTiposList([]);
+				setMesesList([]);
+			});
+		return () => { isCancelled = true; };
+	}, []);
+
+	// Carga da matriz com filtros (exceto região/comparativo, que são aplicados apenas no cliente)
+	useEffect(() => {
+		let isCancelled = false;
+		const fmt = (d?: Date) => d ? `${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}/${d.getFullYear()}` : undefined;
+		const params: Record<string, string> = {};
+		// NÃO enviar seccional aqui: manter todas as regiões para o gráfico comparativo
+		const di = fmt(selectedStartDate);
+		const df = fmt(selectedEndDate);
+		if (di && df) {
+			params.data_inicio = di;
+			params.data_fim = df;
+		}
+		if (selectedStatusSap) params.status_sap = selectedStatusSap;
+		if (selectedTipo) params.tipo = selectedTipo;
+		if (selectedMes) params.mes = selectedMes;
+		// Filtros interativos dos gráficos
+		if (activeFilters.statusENER) params.status_ener = activeFilters.statusENER;
+		if (activeFilters.statusCONC) params.status_conc = activeFilters.statusCONC;
+		if (activeFilters.reasons) params.status_servico = activeFilters.reasons;
+		const loadMatrix = async () => {
+			try {
+				const res = await getMatrizDados(params);
+				if (isCancelled) return;
+				const data = (res.data || []) as MatrizItem[];
+				setRawRows(data);
+			} catch (e) {
+				console.error('Erro ao carregar matriz:', e);
+				setRawRows([]);
+			}
+		};
+		loadMatrix();
+		return () => { isCancelled = true; };
+	}, [selectedStartDate, selectedEndDate, selectedStatusSap, selectedTipo, selectedMes, activeFilters.statusENER, activeFilters.statusCONC, activeFilters.reasons]);
+
+	// Fallback: buscar mapas agregados do backend quando necessário (produção antiga)
+	useEffect(() => {
+		let isCancelled = false;
+		const fmt = (d?: Date) => d ? `${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}/${d.getFullYear()}` : undefined;
+		const params: Record<string, string> = {};
+		if (selectedRegion !== 'all') params.seccional = selectedRegion;
+		const di = fmt(selectedStartDate);
+		const df = fmt(selectedEndDate);
+		if (di && df) {
+			params.data_inicio = di;
+			params.data_fim = df;
+		}
+		if (selectedStatusSap) params.status_sap = selectedStatusSap;
+		if (selectedTipo) params.tipo = selectedTipo;
+		if (selectedMes) params.mes = selectedMes;
+		const fetchFallback = async () => {
+			try {
+				const [enerRes, concRes, reasonsRes] = await Promise.all([
+					getStatusEnerPep(params),
+					getStatusConcPep(params),
+					getStatusServicoContagem(params),
+				]);
+				if (isCancelled) return;
+				setStatusEnerMap(enerRes.data || {});
+				setStatusConcMap(concRes.data || {});
+				setReasonsMap(reasonsRes.data || {});
+			} catch (e) {
+				console.error('Erro ao carregar mapas de fallback:', e);
+				if (isCancelled) return;
+				setStatusEnerMap({});
+				setStatusConcMap({});
+				setReasonsMap({});
+			}
+		};
+		fetchFallback();
+		return () => { isCancelled = true; };
+	}, [selectedRegion, selectedStartDate, selectedEndDate, selectedStatusSap, selectedTipo, selectedMes]);
+
+	// Copiar imagem
+	const copyChartImage = async (chartRef: React.RefObject<HTMLDivElement | null>, chartName: string) => {
+		if (!chartRef.current) return;
+		try {
+			const canvas = await html2canvas(chartRef.current, { backgroundColor: '#ffffff', scale: 2, useCORS: true, allowTaint: true });
+			canvas.toBlob((blob) => {
+				if (blob) {
+					const item = new ClipboardItem({ 'image/png': blob });
+					navigator.clipboard.write([item]).then(() => {
+						showToast(`Imagem do gráfico ${chartName} copiada!`);
+					}).catch(() => {
+						showToast(`Erro ao copiar imagem do gráfico ${chartName}`);
+					});
+				}
+			});
+		} catch (error) {
+			console.error('Erro ao capturar gráfico:', error);
+			showToast(`Erro ao copiar imagem do gráfico ${chartName}`);
+		}
+	};
+
+	// Exportar Excel
+	const handleExportExcel = () => {
+		const worksheet = XLSX.utils.json_to_sheet(filteredData.matrix.map(row => ({
+			'PEP': row.pep,
+			'Prazo': row.prazo,
+			'Data Conclusão': row.dataConclusao,
+			'Status SAP': row.status,
+			'Valor (R$)': row.rs
+		})));
+		const workbook = XLSX.utils.book_new();
+		XLSX.utils.book_append_sheet(workbook, worksheet, 'Prazos SAP');
+		XLSX.writeFile(workbook, 'prazos_sap.xlsx');
+		showToast('Arquivo Excel exportado com sucesso!');
+	};
+
+	// KPIs devem refletir os filtros atuais sobre as linhas usadas na tabela e outros gráficos (rowsForOthers)
+	const totalValue = React.useMemo(() => filteredData.matrix.reduce((sum, row) => sum + (row.rs || 0), 0), [filteredData.matrix]);
+	const totalPep = React.useMemo(() => filteredData.matrix.length, [filteredData.matrix.length]);
+
+	return (
+		<div className="relative z-10 min-h-screen bg-transparent lovable">
+			{/* Fundo animado em toda a página (fixo atrás do conteúdo) */}
+			<FundoAnimado />
+			<header className="fixed top-0 left-0 right-0 z-50 border-b border-green-500 shadow-md bg-gradient-to-r from-green-600 via-green-600/90 to-green-700">
+				<div className="relative flex items-center justify-between h-16 px-4 lg:px-6">
+					{/* Título centralizado */}
+					<div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+						<h1 className="font-inter text-xl sm:text-2xl lg:text-3xl font-extrabold tracking-wide leading-none text-white drop-shadow-[0_3px_6px_rgba(0,0,0,0.35)]">
+							Prazos SAP
+						</h1>
+					</div>
+					<div className="flex items-center gap-3 lg:gap-6">
+						<Button
+							variant="outline"
+							size="sm"
+							onClick={() => setSidebarOpen(!sidebarOpen)}
+							className="flex items-center gap-2 text-gray-700 transition-all duration-200 bg-white border-gray-300 shadow-md lg:hidden rounded-xl hover:shadow-lg hover:bg-gray-50"
+						>
+							<Menu className="w-4 h-4" />
+						</Button>
+						<div className="flex items-center gap-3">
+							<div
+								className="bg-white px-3 lg:px-4 rounded-xl font-bold shadow-md text-center w-[172px] h-10 flex items-center justify-center overflow-hidden cursor-pointer hover:shadow-lg hover:bg-gray-50"
+								onClick={() => navigate('/obras')}
+								title="Ir para Obras"
+								role="button"
+								tabIndex={0}
+							>
+								<img src={LogoSetup} alt="Grupo Setup" className="object-contain w-full h-auto max-h-6" />
+							</div>
+							<Button
+								variant="outline"
+								size="sm"
+								onClick={clearFilters}
+								title="Limpar filtros"
+								className="flex items-center justify-center w-10 h-10 p-0 text-gray-700 transition-all duration-200 bg-white border-gray-300 shadow-md rounded-xl hover:shadow-lg hover:bg-gray-50"
+							>
+								<RotateCcw className="w-4 h-4" />
+							</Button>
+						</div>
+					</div>
+					<div className="flex items-center gap-2 lg:gap-4">
+						<div className="flex items-center gap-2 lg:gap-3">
+							<span className="hidden text-xs text-white lg:text-sm sm:inline">Valor Total</span>
+							<div className="px-2 py-1 text-sm font-semibold text-green-600 bg-white rounded-lg shadow-md lg:px-4 lg:py-2 lg:rounded-xl lg:text-base w-[105px] text-center whitespace-nowrap">
+								R$ {formatValorShort(totalValue)}
+							</div>
+						</div>
+						<div className="flex items-center gap-2 lg:gap-3">
+							<span className="hidden text-xs text-white lg:text-sm sm:inline">PEP</span>
+							<div className="px-2 py-1 text-sm font-semibold text-green-600 bg-white rounded-lg shadow-md lg:px-4 lg:py-2 lg:rounded-xl lg:text-base w-[105px] text-center whitespace-nowrap">
+								{totalPep}
+							</div>
+						</div>
+					</div>
+				</div>
+			</header>
+
+			<div className="relative flex pt-16">
+				{sidebarOpen && (
+					<div className="fixed inset-0 z-40 bg-black/50 lg:hidden" onClick={() => setSidebarOpen(false)} />
+				)}
+
+				<aside className={cn(
+					"fixed left-0 top-16 bottom-0 w-64 bg-white border-r border-gray-200 shadow-md overflow-y-auto z-50 transition-transform duration-300",
+					"lg:translate-x-0 lg:fixed lg:z-auto lg:h-[calc(100vh-4rem)]",
+					sidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
+				)} style={{ direction: 'rtl' }}>
+					<div className="p-4 space-y-4 lg:p-6 lg:space-y-6" style={{ direction: 'ltr' }}>
+						{/* Logo removido do sidebar para manter apenas no header */}
+						<div className="space-y-3">
+							<h3 className="text-sm font-semibold tracking-wider text-gray-500 uppercase">Regiões</h3>
+							<div className="space-y-2">
+								{regions.map((region) => (
+									<Button
+										key={region}
+										variant={selectedRegion === region ? "default" : "outline"}
+										onClick={() => {
+											setSelectedRegion(selectedRegion === region ? 'all' : region);
+											setSidebarOpen(false);
+										}}
+										className="justify-start w-full text-sm transition-all duration-200 shadow-md rounded-xl hover:shadow-lg"
+										size="sm"
+									>
+										{region}
+									</Button>
+								))}
+							</div>
+						</div>
+
+						<div className="pt-4 space-y-3 border-t border-gray-200">
+							<h3 className="text-sm font-semibold tracking-wider text-gray-500 uppercase">Filtros</h3>
+							<select
+								value={selectedStatusSap}
+								onChange={(e) => setSelectedStatusSap(e.target.value)}
+								className={`w-full h-10 px-3 text-sm border rounded-xl shadow-md transition-all duration-200 hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-green-500 ${selectedStatusSap ? 'bg-green-600 text-white border-green-600' : 'bg-white text-gray-900 border-gray-200'}`}
+							>
+								<option value="">Status SAP</option>
+								{statusSapList.map((s) => (
+									<option key={s} value={s}>{s}</option>
+								))}
+							</select>
+							<select
+								value={selectedTipo}
+								onChange={(e) => setSelectedTipo(e.target.value)}
+								className={`w-full h-10 px-3 text-sm border rounded-xl shadow-md transition-all duration-200 hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-green-500 ${selectedTipo ? 'bg-green-600 text-white border-green-600' : 'bg-white text-gray-900 border-gray-200'}`}
+							>
+								<option value="">Tipo</option>
+								{tiposList.map((t) => (
+									<option key={t} value={t}>{t}</option>
+								))}
+							</select>
+							<select
+								value={selectedMes}
+								onChange={(e) => setSelectedMes(e.target.value)}
+								className={`w-full h-10 px-3 text-sm border rounded-xl shadow-md transition-all duration-200 hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-green-500 ${selectedMes ? 'bg-green-600 text-white border-green-600' : 'bg-white text-gray-900 border-gray-200'}`}
+							>
+								<option value="">Mês</option>
+								{mesesList.map((m) => (
+									<option key={m} value={m}>{m}</option>
+								))}
+							</select>
+						</div>
+
+						<div className="pt-4 border-t border-gray-200">
+							<DateRangeFilter
+								startDate={selectedStartDate}
+								endDate={selectedEndDate}
+								onStartDateChange={setSelectedStartDate}
+								onEndDateChange={setSelectedEndDate}
+							/>
+						</div>
+
+						<div className="pt-4 border-t border-gray-200">
+							<PEPSearch searchValue={pepSearch} onSearchChange={setPepSearch} onClearSearch={clearPepSearch} />
+						</div>
+					</div>
+				</aside>
+
+				<main className="flex-1 w-full p-2 sm:p-4 lg:p-6 lg:ml-64">
+					<div className="lg:h-[calc(100vh-8rem)] lg:min-h-[500px] lg:max-h-[calc(100vh-8rem)] mb-8">
+						<div className="grid grid-cols-1 gap-3 lg:grid-cols-2 lg:gap-3 lg:h-full lg:grid-rows-2">
+							<Card className="shadow-card hover:shadow-card-hover bg-gradient-card backdrop-blur-sm border-gray-200 transform transition-all duration-300 hover:scale-[1.02] hover:bg-gradient-card-hover overflow-hidden" ref={statusENERRef} tabIndex={0}>
+								<CardHeader className="flex flex-row items-center justify-between border-b border-gray-300 bg-gradient-secondary/40 backdrop-blur-sm rounded-t-xl">
+									<CardTitle className="text-lg font-semibold text-secondary-foreground">Status ENER</CardTitle>
+									<Button
+										variant="outline"
+										size="sm"
+										onClick={() => copyChartImage(statusENERRef, 'Status ENER')}
+										className="w-8 h-8 p-0 text-gray-700 transition-all duration-200 bg-white border border-gray-300 shadow-md rounded-xl hover:bg-gray-50 hover:shadow-lg"
+										title="Copiar imagem (ou clique no gráfico e Ctrl+C)"
+									>
+										<Copy className="w-4 h-4" />
+									</Button>
+								</CardHeader>
+								<CardContent className="p-4">
+									<ChartContainer config={{ value: { label: "Valor (R$)", color: "hsl(var(--primary))" } }} className="h-64 sm:h-72 md:h-80 lg:h-[calc((100vh-20rem)/2)] lg:max-h-[350px] w-full">
+										<ResponsiveContainer width="100%" height="100%">
+											<BarChart data={filteredData.statusENER} margin={{ top: 20, right: 15, bottom: 50, left: 15 }}>
+												<CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+												<XAxis dataKey="name" fontSize={12} tickMargin={8} />
+												<YAxis fontSize={12} />
+												<Tooltip contentStyle={{ backgroundColor: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: '8px', boxShadow: 'var(--shadow-elegant)' }} formatter={(value: number) => [value.toLocaleString('pt-BR'), 'Qtd']} />
+												<Bar dataKey="qtd" fill="url(#chartGradient)" radius={[8, 8, 0, 0]} style={{ cursor: 'pointer' }}>
+													{filteredData.statusENER.map((entry, index) => (
+														<Cell key={`cell-${index}`} onClick={() => handleChartClick('statusENER', entry.name)} fill={activeFilters.statusENER === entry.name ? "hsl(var(--primary))" : "url(#chartGradient)"} stroke={activeFilters.statusENER === entry.name ? "hsl(var(--primary-foreground))" : "none"} strokeWidth={activeFilters.statusENER === entry.name ? 2 : 0} />
+													))}
+													<LabelList dataKey="qtd" content={makeLabelRenderer(
+														filteredData.statusENER,
+														(name: string) => activeFilters.statusENER === name,
+													)} />
+												</Bar>
+												<defs>
+													<linearGradient id="chartGradient" x1="0" y1="0" x2="0" y2="1">
+														<stop offset="0%" stopColor="hsl(142 90% 45%)" />
+														<stop offset="50%" stopColor="hsl(142 85% 42%)" />
+														<stop offset="100%" stopColor="hsl(142 76% 36%)" />
+													</linearGradient>
+												</defs>
+											</BarChart>
+										</ResponsiveContainer>
+									</ChartContainer>
+								</CardContent>
+							</Card>
+
+							<Card className="shadow-card hover:shadow-card-hover bg-gradient-card backdrop-blur-sm border-gray-200 transform transition-all duration-300 hover:scale-[1.02] hover:bg-gradient-card-hover overflow-hidden" ref={comparisonRef} tabIndex={0}>
+								<CardHeader className="flex flex-row items-center justify-between border-b border-gray-300 bg-gradient-secondary/40 backdrop-blur-sm rounded-t-xl">
+									<CardTitle className="text-lg font-semibold text-secondary-foreground">Comparativo por Região</CardTitle>
+									<Button
+										variant="outline"
+										size="sm"
+										onClick={() => copyChartImage(comparisonRef, 'Comparativo')}
+										className="w-8 h-8 p-0 text-gray-700 transition-all duration-200 bg-white border border-gray-300 shadow-md rounded-xl hover:bg-gray-50 hover:shadow-lg"
+										title="Copiar imagem (ou clique no gráfico e Ctrl+C)"
+									>
+										<Copy className="w-4 h-4" />
+									</Button>
+								</CardHeader>
+								<CardContent className="p-4">
+									<ChartContainer config={{ value: { label: "Valor (R$)", color: "hsl(var(--primary))" } }} className="h-64 sm:h-72 md:h-80 lg:h-[calc((100vh-20rem)/2)] lg:max-h-[350px] w-full">
+										<ResponsiveContainer width="100%" height="100%">
+											<BarChart data={filteredData.comparison} margin={{ top: 20, right: 20, bottom: 50, left: 20 }} barGap={4} barCategoryGap={16}>
+												<CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+												<XAxis dataKey="name" fontSize={12} tickMargin={8} />
+												<YAxis yAxisId="left" fontSize={12} />
+												<YAxis yAxisId="right" orientation="right" fontSize={12} hide />
+												<Tooltip
+													contentStyle={{ backgroundColor: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: '8px', boxShadow: 'var(--shadow-elegant)' }}
+													formatter={(value, _name, item) => {
+														const num = typeof value === 'number' ? value : Number(value) || 0;
+														// item pode ser Payload | Payload[]; tratamos a primeira ocorrência
+														type TP = { dataKey?: string | number } | undefined;
+														const payload = (Array.isArray(item) ? item[0] : item) as TP;
+														const dataKey = payload && payload.dataKey;
+														if (dataKey === 'value') return [`R$ ${num.toLocaleString('pt-BR')}`, 'Valor'];
+														return [num.toLocaleString('pt-BR'), 'Qtd'];
+													}}
+												/>
+												<Bar yAxisId="left" dataKey="qtd" fill="url(#chartGreenGradientComparison)" radius={[8, 8, 0, 0]} style={{ cursor: 'pointer' }}>
+													{filteredData.comparison.map((entry, index) => {
+														const highlight = activeFilters.comparison || (selectedRegion !== 'all' ? selectedRegion : '');
+														const isHighlighted = highlight && highlight === entry.name;
+														return (
+															<Cell
+																key={`cell-${index}`}
+																onClick={() => handleChartClick('comparison', entry.name)}
+																fill={isHighlighted ? "hsl(var(--primary))" : "url(#chartGreenGradientComparison)"}
+																stroke={isHighlighted ? "hsl(var(--primary-foreground))" : "none"}
+																strokeWidth={isHighlighted ? 2 : 0}
+															/>
+														);
+													})}
+													<LabelList dataKey="qtd" content={makeLabelRenderer(
+														filteredData.comparison,
+														(name: string) => {
+															const highlight = activeFilters.comparison || (selectedRegion !== 'all' ? selectedRegion : '');
+															return highlight === name;
+														},
+													)} />
+												</Bar>
+												<Bar yAxisId="right" dataKey="value" fill="url(#chartBlueGradientValue)" radius={[8, 8, 0, 0]} style={{ cursor: 'pointer' }}>
+													{filteredData.comparison.map((entry, index) => {
+														const highlight = activeFilters.comparison || (selectedRegion !== 'all' ? selectedRegion : '');
+														const isHighlighted = highlight && highlight === entry.name;
+														return (
+															<Cell
+																key={`cellv-${index}`}
+																onClick={() => handleChartClick('comparison', entry.name)}
+																fill={isHighlighted ? "#1e3a8a" : "url(#chartBlueGradientValue)"}
+																stroke={isHighlighted ? "#0b173d" : "none"}
+																strokeWidth={isHighlighted ? 2 : 0}
+															/>
+														);
+													})}
+													<LabelList dataKey="value" content={makeValueLabelRenderer(
+														filteredData.comparison,
+														(name: string) => {
+															const highlight = activeFilters.comparison || (selectedRegion !== 'all' ? selectedRegion : '');
+															return highlight === name;
+														},
+													)} />
+												</Bar>
+												<defs>
+													<linearGradient id="chartGreenGradientComparison" x1="0" y1="0" x2="0" y2="1">
+														<stop offset="0%" stopColor="hsl(142 90% 45%)" />
+														<stop offset="50%" stopColor="hsl(142 85% 42%)" />
+														<stop offset="100%" stopColor="hsl(142 76% 36%)" />
+													</linearGradient>
+													<linearGradient id="chartBlueGradientValue" x1="0" y1="0" x2="0" y2="1">
+														<stop offset="0%" stopColor="#3b82f6" />
+														<stop offset="50%" stopColor="#1d4ed8" />
+														<stop offset="100%" stopColor="#1e3a8a" />
+													</linearGradient>
+												</defs>
+											</BarChart>
+										</ResponsiveContainer>
+									</ChartContainer>
+								</CardContent>
+							</Card>
+
+							<Card className="shadow-card hover:shadow-card-hover bg-gradient-card backdrop-blur-sm border-gray-200 transform transition-all duration-300 hover:scale-[1.02] hover:bg-gradient-card-hover overflow-hidden" ref={statusCONCRef} tabIndex={0}>
+								<CardHeader className="flex flex-row items-center justify-between border-b border-gray-300 bg-gradient-secondary/40 backdrop-blur-sm rounded-t-xl">
+									<CardTitle className="text-lg font-semibold text-secondary-foreground">Status CONC</CardTitle>
+									<Button
+										variant="outline"
+										size="sm"
+										onClick={() => copyChartImage(statusCONCRef, 'Status CONC')}
+										className="w-8 h-8 p-0 text-gray-700 transition-all duration-200 bg-white border border-gray-300 shadow-md rounded-xl hover:bg-gray-50 hover:shadow-lg"
+										title="Copiar imagem (ou clique no gráfico e Ctrl+C)"
+									>
+										<Copy className="w-4 h-4" />
+									</Button>
+								</CardHeader>
+								<CardContent className="p-4">
+									<ChartContainer config={{ value: { label: "Valor (R$)", color: "hsl(var(--primary))" } }} className="h-64 sm:h-72 md:h-80 lg:h-[calc((100vh-20rem)/2)] lg:max-h-[350px] w-full">
+										<ResponsiveContainer width="100%" height="100%">
+											<BarChart data={filteredData.statusCONC} margin={{ top: 20, right: 15, bottom: 50, left: 15 }}>
+												<CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+												<XAxis dataKey="name" fontSize={12} tickMargin={8} />
+												<YAxis fontSize={12} />
+												<Tooltip contentStyle={{ backgroundColor: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: '8px', boxShadow: 'var(--shadow-elegant)' }} formatter={(value: number) => [value.toLocaleString('pt-BR'), 'Qtd']} />
+												<Bar dataKey="qtd" fill="url(#chartGreenGradientConc)" radius={[8, 8, 0, 0]} style={{ cursor: 'pointer' }}>
+													{filteredData.statusCONC.map((entry, index) => (
+														<Cell key={`cell-${index}`} onClick={() => handleChartClick('statusCONC', entry.name)} fill={activeFilters.statusCONC === entry.name ? "hsl(var(--primary))" : "url(#chartGreenGradientConc)"} stroke={activeFilters.statusCONC === entry.name ? "hsl(var(--primary-foreground))" : "none"} strokeWidth={activeFilters.statusCONC === entry.name ? 2 : 0} />
+													))}
+													<LabelList dataKey="qtd" content={makeLabelRenderer(
+														filteredData.statusCONC,
+														(name: string) => activeFilters.statusCONC === name,
+													)} />
+												</Bar>
+												<defs>
+													<linearGradient id="chartGreenGradientConc" x1="0" y1="0" x2="0" y2="1">
+														<stop offset="0%" stopColor="hsl(142 90% 45%)" />
+														<stop offset="50%" stopColor="hsl(142 85% 42%)" />
+														<stop offset="100%" stopColor="hsl(142 76% 36%)" />
+													</linearGradient>
+												</defs>
+											</BarChart>
+										</ResponsiveContainer>
+									</ChartContainer>
+								</CardContent>
+							</Card>
+
+							<Card className="shadow-card hover:shadow-card-hover bg-gradient-card backdrop-blur-sm border-gray-200 transform transition-all duration-300 hover:scale-[1.02] hover:bg-gradient-card-hover overflow-hidden" ref={reasonsRef} tabIndex={0}>
+								<CardHeader className="flex flex-row items-center justify-between border-b border-gray-300 bg-gradient-secondary/40 backdrop-blur-sm rounded-t-xl">
+									<CardTitle className="text-lg font-semibold text-secondary-foreground">Motivos</CardTitle>
+									<Button
+										variant="outline"
+										size="sm"
+										onClick={() => copyChartImage(reasonsRef, 'Motivos')}
+										className="w-8 h-8 p-0 text-gray-700 transition-all duration-200 bg-white border border-gray-300 shadow-md rounded-xl hover:bg-gray-50 hover:shadow-lg"
+										title="Copiar imagem (ou clique no gráfico e Ctrl+C)"
+									>
+										<Copy className="w-4 h-4" />
+									</Button>
+								</CardHeader>
+								<CardContent className="p-4">
+									<ChartContainer config={{ value: { label: "Valor (R$)", color: "hsl(var(--primary))" } }} className="h-64 sm:h-72 md:h-80 lg:h-[calc((100vh-20rem)/2)] lg:max-h-[350px] w-full">
+										<ResponsiveContainer width="100%" height="100%">
+											<BarChart data={filteredData.reasons} margin={{ top: 20, right: 15, bottom: 50, left: 15 }}>
+												<CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+												<XAxis dataKey="name" fontSize={12} tickMargin={8} />
+												<YAxis fontSize={12} />
+												<Tooltip contentStyle={{ backgroundColor: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: '8px', boxShadow: 'var(--shadow-elegant)' }} formatter={(value: number) => [value.toLocaleString('pt-BR'), 'Qtd']} />
+												<Bar dataKey="qtd" fill="url(#chartGreenGradientReasons)" radius={[8, 8, 0, 0]} style={{ cursor: 'pointer' }}>
+													{filteredData.reasons.map((entry, index) => (
+														<Cell key={`cell-${index}`} onClick={() => handleChartClick('reasons', entry.name)} fill={activeFilters.reasons === entry.name ? "hsl(var(--primary))" : "url(#chartGreenGradientReasons)"} stroke={activeFilters.reasons === entry.name ? "hsl(var(--primary-foreground))" : "none"} strokeWidth={activeFilters.reasons === entry.name ? 2 : 0} />
+													))}
+													<LabelList dataKey="qtd" content={makeLabelRenderer(
+														filteredData.reasons,
+														(name: string) => activeFilters.reasons === name,
+													)} />
+												</Bar>
+												<defs>
+													<linearGradient id="chartGreenGradientReasons" x1="0" y1="0" x2="0" y2="1">
+														<stop offset="0%" stopColor="hsl(142 90% 45%)" />
+														<stop offset="50%" stopColor="hsl(142 85% 42%)" />
+														<stop offset="100%" stopColor="hsl(142 76% 36%)" />
+													</linearGradient>
+												</defs>
+											</BarChart>
+										</ResponsiveContainer>
+									</ChartContainer>
+								</CardContent>
+							</Card>
+						</div>
+					</div>
+
+					<Card className="shadow-card hover:shadow-card-hover bg-gradient-card backdrop-blur-sm border-gray-200 transform transition-all duration-300 hover:scale-[1.01]">
+						<CardHeader className="flex flex-row items-center justify-between border-b border-gray-300 bg-gradient-secondary/40 backdrop-blur-sm rounded-t-xl">
+							<CardTitle className="text-lg font-semibold text-secondary-foreground">Matriz de Prazos SAP</CardTitle>
+							<Button
+								variant="outline"
+								size="sm"
+								onClick={handleExportExcel}
+								className="flex items-center gap-2 text-gray-700 transition-all duration-200 bg-white border border-gray-300 shadow-md rounded-xl hover:bg-gray-50 hover:shadow-lg"
+							>
+								<Copy className="w-4 h-4" />
+								Exportar Excel
+							</Button>
+						</CardHeader>
+						<CardContent className="p-0">
+							<div className="overflow-x-auto">
+								<Table>
+									<TableHeader>
+										<TableRow className="bg-gray-50 hover:bg-gray-100">
+											<TableHead className="font-semibold text-gray-700 transition-colors cursor-pointer select-none hover:bg-gray-200" onClick={() => handleSort('pep')}>
+												<div className="flex items-center gap-2">PEP {getSortIcon('pep')}</div>
+											</TableHead>
+											<TableHead className="font-semibold text-gray-700 transition-colors cursor-pointer select-none hover:bg-gray-200" onClick={() => handleSort('prazo')}>
+												<div className="flex items-center gap-2">Prazo {getSortIcon('prazo')}</div>
+											</TableHead>
+											<TableHead className="font-semibold text-gray-700 transition-colors cursor-pointer select-none hover:bg-gray-200" onClick={() => handleSort('dataConclusao')}>
+												<div className="flex items-center gap-2">Data Conclusão {getSortIcon('dataConclusao')}</div>
+											</TableHead>
+											<TableHead className="font-semibold text-gray-700 transition-colors cursor-pointer select-none hover:bg-gray-200" onClick={() => handleSort('status')}>
+												<div className="flex items-center gap-2">Status SAP {getSortIcon('status')}</div>
+											</TableHead>
+											<TableHead className="font-semibold text-gray-700 transition-colors cursor-pointer select-none hover:bg-gray-200" onClick={() => handleSort('rs')}>
+												<div className="flex items-center gap-2">R$ {getSortIcon('rs')}</div>
+											</TableHead>
+										</TableRow>
+									</TableHeader>
+									<TableBody>
+										{filteredData.matrix.map((row, index) => (
+											<TableRow key={index} className={cn("cursor-pointer transition-all duration-200 select-none", selectedMatrixRow === row.pep ? "bg-green-50 border-l-4 border-l-green-600 shadow-md hover:bg-green-100" : "hover:bg-gray-50")} onClick={() => setSelectedMatrixRow(row.pep)}>
+												<TableCell className="font-mono text-sm">{row.pep}</TableCell>
+												<TableCell className="text-sm">{row.prazo}</TableCell>
+												<TableCell className="text-sm">{row.dataConclusao}</TableCell>
+												<TableCell>
+													<span className={`px-3 py-1 rounded-full text-xs font-medium ${row.status === 'Concluído' ? 'bg-green-100 text-green-700 border border-green-300' : 'bg-yellow-100 text-yellow-800 border border-yellow-300'}`}>
+														{row.status}
+													</span>
+												</TableCell>
+												<TableCell className="font-semibold">{row.rs.toLocaleString('pt-BR')}</TableCell>
+											</TableRow>
+										))}
+									</TableBody>
+								</Table>
+							</div>
+						</CardContent>
+					</Card>
+				</main>
+			</div>
+		</div>
+	);
 }

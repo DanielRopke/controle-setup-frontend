@@ -42,7 +42,7 @@ export function useDadosGraficos(filtros: {
     if (filtros.tipo) params.append('tipo', filtros.tipo);
     if (filtros.mes) params.append('mes', filtros.mes);
     api.getGraficoServico(params).then(r => setGraficoServico(flattenGrafico(r.data)));
-    api.getGraficoSeccionalRS().then(r => setGraficoSeccionalRS(flattenSeccionalRS(r.data)));
+    api.getGraficoSeccionalRS(params).then(r => setGraficoSeccionalRS(flattenSeccionalRS(r.data)));
   }, [filtros.seccionais, filtros.statusSap, filtros.tipo, filtros.mes]);
 
   useEffect(() => {
