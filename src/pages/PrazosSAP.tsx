@@ -36,6 +36,10 @@ type BarLabelProps = {
 	index?: number;
 };
 
+// Tipos mínimos para renderizadores e callbacks do recharts (evitar `any`)
+type ChartTickProps = { x?: number; y?: number; payload?: { value?: string } };
+type BarDatumLike = { name?: string; payload?: { name?: string } } | undefined;
+
 export default function PrazosSAP() {
 	const navigate = useNavigate();
 	const [selectedRegion, setSelectedRegion] = useState<string>('all');
@@ -711,10 +715,22 @@ export default function PrazosSAP() {
 										<ResponsiveContainer width="100%" height="100%">
 											<BarChart data={filteredData.statusENER} margin={{ top: 20, right: 15, bottom: 50, left: 15 }}>
 												<CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-												<XAxis dataKey="name" fontSize={12} tickMargin={8} />
+												<XAxis dataKey="name" fontSize={12} tickMargin={8} tick={(props: unknown) => {
+													const p = props as ChartTickProps;
+													const value = p && p.payload ? p.payload.value : '';
+													return (
+														<g transform={`translate(${p.x},${p.y})`} style={{ cursor: 'pointer' }} onClick={() => handleChartClick('statusENER', String(value))}>
+															<text x={0} y={0} dy={16} textAnchor="middle" fontSize={12} fill="currentColor">{String(value)}</text>
+														</g>
+													);
+												}} />
 												<YAxis fontSize={12} />
 												<Tooltip contentStyle={{ backgroundColor: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: '8px', boxShadow: 'var(--shadow-elegant)' }} formatter={(value: number) => [value.toLocaleString('pt-BR'), 'Qtd']} />
-												<Bar dataKey="qtd" fill="url(#chartGradient)" radius={[8, 8, 0, 0]} style={{ cursor: 'pointer' }}>
+												<Bar dataKey="qtd" fill="url(#chartGradient)" radius={[8, 8, 0, 0]} style={{ cursor: 'pointer' }} onClick={(d: unknown, i: number) => {
+													const dd = d as BarDatumLike;
+													const name = (dd && (dd.name || (dd.payload && dd.payload.name))) || (filteredData.statusENER[i] && filteredData.statusENER[i].name);
+													if (name) handleChartClick('statusENER', String(name));
+												}}>
 													{filteredData.statusENER.map((entry, index) => (
 														<Cell key={`cell-${index}`} onClick={() => handleChartClick('statusENER', entry.name)} fill={activeFilters.statusENER === entry.name ? "hsl(var(--primary))" : "url(#chartGradient)"} stroke={activeFilters.statusENER === entry.name ? "hsl(var(--primary-foreground))" : "none"} strokeWidth={activeFilters.statusENER === entry.name ? 2 : 0} />
 													))}
@@ -753,7 +769,15 @@ export default function PrazosSAP() {
 										<ResponsiveContainer width="100%" height="100%">
 											<BarChart data={filteredData.comparison} margin={{ top: 20, right: 20, bottom: 50, left: 20 }} barGap={4} barCategoryGap={16}>
 												<CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-												<XAxis dataKey="name" fontSize={12} tickMargin={8} />
+												<XAxis dataKey="name" fontSize={12} tickMargin={8} tick={(props: unknown) => {
+													const p = props as ChartTickProps;
+													const value = p && p.payload ? p.payload.value : '';
+													return (
+														<g transform={`translate(${p.x},${p.y})`} style={{ cursor: 'pointer' }} onClick={() => handleChartClick('comparison', String(value))}>
+															<text x={0} y={0} dy={16} textAnchor="middle" fontSize={12} fill="currentColor">{String(value)}</text>
+														</g>
+													);
+												}} />
 												<YAxis yAxisId="left" fontSize={12} />
 												<YAxis yAxisId="right" orientation="right" fontSize={12} hide />
 												<Tooltip
@@ -768,7 +792,11 @@ export default function PrazosSAP() {
 														return [num.toLocaleString('pt-BR'), 'Qtd'];
 													}}
 												/>
-												<Bar yAxisId="left" dataKey="qtd" fill="url(#chartGreenGradientComparison)" radius={[8, 8, 0, 0]} style={{ cursor: 'pointer' }}>
+												<Bar yAxisId="left" dataKey="qtd" fill="url(#chartGreenGradientComparison)" radius={[8, 8, 0, 0]} style={{ cursor: 'pointer' }} onClick={(d: unknown, i: number) => {
+													const dd = d as BarDatumLike;
+													const name = (dd && (dd.name || (dd.payload && dd.payload.name))) || (filteredData.comparison[i] && filteredData.comparison[i].name);
+													if (name) handleChartClick('comparison', String(name));
+												}}>
 													{filteredData.comparison.map((entry, index) => {
 														const highlight = activeFilters.comparison || (selectedRegion !== 'all' ? selectedRegion : '');
 														const isHighlighted = highlight && highlight === entry.name;
@@ -790,7 +818,11 @@ export default function PrazosSAP() {
 														},
 													)} />
 												</Bar>
-												<Bar yAxisId="right" dataKey="value" fill="url(#chartBlueGradientValue)" radius={[8, 8, 0, 0]} style={{ cursor: 'pointer' }}>
+												<Bar yAxisId="right" dataKey="value" fill="url(#chartBlueGradientValue)" radius={[8, 8, 0, 0]} style={{ cursor: 'pointer' }} onClick={(d: unknown, i: number) => {
+													const dd = d as BarDatumLike;
+													const name = (dd && (dd.name || (dd.payload && dd.payload.name))) || (filteredData.comparison[i] && filteredData.comparison[i].name);
+													if (name) handleChartClick('comparison', String(name));
+												}}>
 													{filteredData.comparison.map((entry, index) => {
 														const highlight = activeFilters.comparison || (selectedRegion !== 'all' ? selectedRegion : '');
 														const isHighlighted = highlight && highlight === entry.name;
@@ -847,10 +879,22 @@ export default function PrazosSAP() {
 										<ResponsiveContainer width="100%" height="100%">
 											<BarChart data={filteredData.statusCONC} margin={{ top: 20, right: 15, bottom: 50, left: 15 }}>
 												<CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-												<XAxis dataKey="name" fontSize={12} tickMargin={8} />
+												<XAxis dataKey="name" fontSize={12} tickMargin={8} tick={(props: unknown) => {
+													const p = props as ChartTickProps;
+													const value = p && p.payload ? p.payload.value : '';
+													return (
+														<g transform={`translate(${p.x},${p.y})`} style={{ cursor: 'pointer' }} onClick={() => handleChartClick('statusCONC', String(value))}>
+															<text x={0} y={0} dy={16} textAnchor="middle" fontSize={12} fill="currentColor">{String(value)}</text>
+														</g>
+													);
+												}} />
 												<YAxis fontSize={12} />
 												<Tooltip contentStyle={{ backgroundColor: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: '8px', boxShadow: 'var(--shadow-elegant)' }} formatter={(value: number) => [value.toLocaleString('pt-BR'), 'Qtd']} />
-												<Bar dataKey="qtd" fill="url(#chartGreenGradientConc)" radius={[8, 8, 0, 0]} style={{ cursor: 'pointer' }}>
+												<Bar dataKey="qtd" fill="url(#chartGreenGradientConc)" radius={[8, 8, 0, 0]} style={{ cursor: 'pointer' }} onClick={(d: unknown, i: number) => {
+													const dd = d as BarDatumLike;
+													const name = (dd && (dd.name || (dd.payload && dd.payload.name))) || (filteredData.statusCONC[i] && filteredData.statusCONC[i].name);
+													if (name) handleChartClick('statusCONC', String(name));
+												}}>
 													{filteredData.statusCONC.map((entry, index) => (
 														<Cell key={`cell-${index}`} onClick={() => handleChartClick('statusCONC', entry.name)} fill={activeFilters.statusCONC === entry.name ? "hsl(var(--primary))" : "url(#chartGreenGradientConc)"} stroke={activeFilters.statusCONC === entry.name ? "hsl(var(--primary-foreground))" : "none"} strokeWidth={activeFilters.statusCONC === entry.name ? 2 : 0} />
 													))}
@@ -889,10 +933,22 @@ export default function PrazosSAP() {
 										<ResponsiveContainer width="100%" height="100%">
 											<BarChart data={filteredData.reasons} margin={{ top: 20, right: 15, bottom: 50, left: 15 }}>
 												<CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-												<XAxis dataKey="name" fontSize={12} tickMargin={8} />
+												<XAxis dataKey="name" fontSize={12} tickMargin={8} tick={(props: unknown) => {
+													const p = props as ChartTickProps;
+													const value = p && p.payload ? p.payload.value : '';
+													return (
+														<g transform={`translate(${p.x},${p.y})`} style={{ cursor: 'pointer' }} onClick={() => handleChartClick('reasons', String(value))}>
+															<text x={0} y={0} dy={16} textAnchor="middle" fontSize={12} fill="currentColor">{String(value)}</text>
+														</g>
+													);
+												}} />
 												<YAxis fontSize={12} />
 												<Tooltip contentStyle={{ backgroundColor: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: '8px', boxShadow: 'var(--shadow-elegant)' }} formatter={(value: number) => [value.toLocaleString('pt-BR'), 'Qtd']} />
-												<Bar dataKey="qtd" fill="url(#chartGreenGradientReasons)" radius={[8, 8, 0, 0]} style={{ cursor: 'pointer' }}>
+												<Bar dataKey="qtd" fill="url(#chartGreenGradientReasons)" radius={[8, 8, 0, 0]} style={{ cursor: 'pointer' }} onClick={(d: unknown, i: number) => {
+													const dd = d as BarDatumLike;
+													const name = (dd && (dd.name || (dd.payload && dd.payload.name))) || (filteredData.reasons[i] && filteredData.reasons[i].name);
+													if (name) handleChartClick('reasons', String(name));
+												}}>
 													{filteredData.reasons.map((entry, index) => (
 														<Cell key={`cell-${index}`} onClick={() => handleChartClick('reasons', entry.name)} fill={activeFilters.reasons === entry.name ? "hsl(var(--primary))" : "url(#chartGreenGradientReasons)"} stroke={activeFilters.reasons === entry.name ? "hsl(var(--primary-foreground))" : "none"} strokeWidth={activeFilters.reasons === entry.name ? 2 : 0} />
 													))}
