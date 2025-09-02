@@ -470,7 +470,7 @@ export default function PrazosSAP() {
 								role="button"
 								tabIndex={0}
 							>
-								<img src={LogoSetup} alt="Grupo Setup" className="object-contain h-10 w-auto max-w-full" />
+								<img src={LogoSetup} alt="Grupo Setup" className="object-contain w-auto h-10 max-w-full" />
 							</div>
 							<Button
 								variant="outline"
@@ -584,14 +584,13 @@ export default function PrazosSAP() {
 				<main className="flex-1 w-full p-2 sm:p-4 lg:p-6 lg:ml-64">
 					<div className="lg:h-[calc(100vh-8rem)] lg:min-h-[500px] lg:max-h-[calc(100vh-8rem)] mb-8">
 						<div className="grid grid-cols-1 gap-3 lg:grid-cols-2 lg:gap-3 lg:h-full lg:grid-rows-2">
-							<Card className="shadow-card hover:shadow-card-hover bg-gradient-card backdrop-blur-sm border-gray-200 transform transition-all duration-300 hover:scale-[1.02] hover:bg-gradient-card-hover overflow-hidden" ref={statusENERRef} tabIndex={0}>
-								<CardHeader className="flex flex-row items-center justify-between border-b border-gray-300 bg-gradient-secondary/40 backdrop-blur-sm rounded-t-xl">
+								<Card className="shadow-card hover:shadow-card-hover bg-white border-gray-200 transform transition-all duration-300 hover:scale-[1.02] overflow-hidden" ref={statusENERRef} tabIndex={0}>
+								<CardHeader className="flex flex-row items-center justify-between bg-white border-b border-gray-300 rounded-t-xl">
 									<CardTitle className="text-lg font-semibold text-secondary-foreground">Status ENER</CardTitle>
 									<Button
-										variant="outline"
 										size="sm"
 										onClick={() => copyChartImage(statusENERRef, 'Status ENER')}
-										className="w-8 h-8 p-0 text-gray-700 transition-all duration-200 bg-white border border-gray-300 shadow-md rounded-xl hover:bg-gray-50 hover:shadow-lg"
+										className="w-8 h-8 p-0 text-gray-700 transition-all duration-200 bg-white border border-gray-300 shadow-md rounded-xl hover:bg-gray-50 hover:shadow-lg focus:outline-none focus:ring-0 ring-0"
 										title="Copiar imagem (ou clique no gráfico e Ctrl+C)"
 									>
 										<Copy className="w-4 h-4" />
@@ -627,14 +626,13 @@ export default function PrazosSAP() {
 								</CardContent>
 							</Card>
 
-							<Card className="shadow-card hover:shadow-card-hover bg-gradient-card backdrop-blur-sm border-gray-200 transform transition-all duration-300 hover:scale-[1.02] hover:bg-gradient-card-hover overflow-hidden" ref={comparisonRef} tabIndex={0}>
-								<CardHeader className="flex flex-row items-center justify-between border-b border-gray-300 bg-gradient-secondary/40 backdrop-blur-sm rounded-t-xl">
+								<Card className="shadow-card hover:shadow-card-hover bg-white border-gray-200 transform transition-all duration-300 hover:scale-[1.02] overflow-hidden" ref={comparisonRef} tabIndex={0}>
+								<CardHeader className="flex flex-row items-center justify-between bg-white border-b border-gray-300 rounded-t-xl">
 									<CardTitle className="text-lg font-semibold text-secondary-foreground">Comparativo por Região</CardTitle>
 									<Button
-										variant="outline"
 										size="sm"
 										onClick={() => copyChartImage(comparisonRef, 'Comparativo')}
-										className="w-8 h-8 p-0 text-gray-700 transition-all duration-200 bg-white border border-gray-300 shadow-md rounded-xl hover:bg-gray-50 hover:shadow-lg"
+										className="w-8 h-8 p-0 text-gray-700 transition-all duration-200 bg-white border border-gray-300 shadow-md rounded-xl hover:bg-gray-50 hover:shadow-lg focus:outline-none focus:ring-0 ring-0"
 										title="Copiar imagem (ou clique no gráfico e Ctrl+C)"
 									>
 										<Copy className="w-4 h-4" />
@@ -722,14 +720,13 @@ export default function PrazosSAP() {
 								</CardContent>
 							</Card>
 
-							<Card className="shadow-card hover:shadow-card-hover bg-gradient-card backdrop-blur-sm border-gray-200 transform transition-all duration-300 hover:scale-[1.02] hover:bg-gradient-card-hover overflow-hidden" ref={statusCONCRef} tabIndex={0}>
-								<CardHeader className="flex flex-row items-center justify-between border-b border-gray-300 bg-gradient-secondary/40 backdrop-blur-sm rounded-t-xl">
+								<Card className="shadow-card hover:shadow-card-hover bg-white border-gray-200 transform transition-all duration-300 hover:scale-[1.02] overflow-hidden" ref={statusCONCRef} tabIndex={0}>
+								<CardHeader className="flex flex-row items-center justify-between bg-white border-b border-gray-300 rounded-t-xl">
 									<CardTitle className="text-lg font-semibold text-secondary-foreground">Status CONC</CardTitle>
 									<Button
-										variant="outline"
 										size="sm"
 										onClick={() => copyChartImage(statusCONCRef, 'Status CONC')}
-										className="w-8 h-8 p-0 text-gray-700 transition-all duration-200 bg-white border border-gray-300 shadow-md rounded-xl hover:bg-gray-50 hover:shadow-lg"
+										className="w-8 h-8 p-0 text-gray-700 transition-all duration-200 bg-white border border-gray-300 shadow-md rounded-xl hover:bg-gray-50 hover:shadow-lg focus:outline-none focus:ring-0 ring-0"
 										title="Copiar imagem (ou clique no gráfico e Ctrl+C)"
 									>
 										<Copy className="w-4 h-4" />
@@ -765,14 +762,13 @@ export default function PrazosSAP() {
 								</CardContent>
 							</Card>
 
-							<Card className="shadow-card hover:shadow-card-hover bg-gradient-card backdrop-blur-sm border-gray-200 transform transition-all duration-300 hover:scale-[1.02] hover:bg-gradient-card-hover overflow-hidden" ref={reasonsRef} tabIndex={0}>
-								<CardHeader className="flex flex-row items-center justify-between border-b border-gray-300 bg-gradient-secondary/40 backdrop-blur-sm rounded-t-xl">
+								<Card className="shadow-card hover:shadow-card-hover bg-white border-gray-200 transform transition-all duration-300 hover:scale-[1.02] overflow-hidden" ref={reasonsRef} tabIndex={0}>
+								<CardHeader className="flex flex-row items-center justify-between bg-white border-b border-gray-300 rounded-t-xl">
 									<CardTitle className="text-lg font-semibold text-secondary-foreground">Motivos</CardTitle>
 									<Button
-										variant="outline"
 										size="sm"
 										onClick={() => copyChartImage(reasonsRef, 'Motivos')}
-										className="w-8 h-8 p-0 text-gray-700 transition-all duration-200 bg-white border border-gray-300 shadow-md rounded-xl hover:bg-gray-50 hover:shadow-lg"
+										className="w-8 h-8 p-0 text-gray-700 transition-all duration-200 bg-white border border-gray-300 shadow-md rounded-xl hover:bg-gray-50 hover:shadow-lg focus:outline-none focus:ring-0 ring-0"
 										title="Copiar imagem (ou clique no gráfico e Ctrl+C)"
 									>
 										<Copy className="w-4 h-4" />
@@ -810,14 +806,13 @@ export default function PrazosSAP() {
 						</div>
 					</div>
 
-					<Card className="shadow-card hover:shadow-card-hover bg-gradient-card backdrop-blur-sm border-gray-200 transform transition-all duration-300 hover:scale-[1.01]">
-						<CardHeader className="flex flex-row items-center justify-between border-b border-gray-300 bg-gradient-secondary/40 backdrop-blur-sm rounded-t-xl">
+					<Card className="shadow-card hover:shadow-card-hover bg-white border-gray-200 transform transition-all duration-300 hover:scale-[1.01]">
+						<CardHeader className="flex flex-row items-center justify-between bg-white border-b border-gray-300 rounded-t-xl">
 							<CardTitle className="text-lg font-semibold text-secondary-foreground">Matriz de Prazos SAP</CardTitle>
 							<Button
-								variant="outline"
 								size="sm"
 								onClick={handleExportExcel}
-								className="flex items-center gap-2 text-gray-700 transition-all duration-200 bg-white border border-gray-300 shadow-md rounded-xl hover:bg-gray-50 hover:shadow-lg"
+								className="flex items-center gap-2 text-gray-700 transition-all duration-200 bg-white border border-gray-300 shadow-md rounded-xl hover:bg-gray-50 hover:shadow-lg focus:outline-none focus:ring-0 ring-0"
 							>
 								<Copy className="w-4 h-4" />
 								Exportar Excel

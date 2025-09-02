@@ -1,5 +1,6 @@
 // src/App.tsx
 import { BrowserRouter as Router, Routes, Route, Navigate, useNavigate } from 'react-router-dom'
+import { Toaster } from 'sonner'
 
 // Import das páginas essenciais para este fluxo
 import PrazosSAP from './pages/PrazosSAP'
@@ -53,6 +54,8 @@ function AppContent() {
 export default function App() {
   return (
     <Router>
+  {/* Toaster global para exibir mensagens (sonner) */}
+  <Toaster richColors position="bottom-right" />
       <AppContent />
     </Router>
   )
