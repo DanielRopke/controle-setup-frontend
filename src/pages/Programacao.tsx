@@ -52,10 +52,25 @@ export default function Programacao() {
   const [sortConfig, setSortConfig] = useState<{ key?: keyof MatrixRow; direction?: 'asc' | 'desc' }>({});
   const [regions, setRegions] = useState<string[]>([]);
   const [rawRows, setRawRows] = useState<MatrizItem[]>([]);
-  const [loadingSheet, setLoadingSheet] = useState(false);
   const [statusSapList, setStatusSapList] = useState<string[]>([]);
   const [tiposList, setTiposList] = useState<string[]>([]);
   const [mesesList, setMesesList] = useState<string[]>([]);
+
+  // Proporções das colunas em % do espaço disponível
+  type ColumnKey = 'data' | 'pep' | 'valorProgramado' | 'valorConcluido' | 'valorParcial' | 'valorCancelado' | 'statusProg' | 'motivoNaoCumprimento' | 'motivoPrioridade' | 'hash';
+  const colPercents: Record<ColumnKey, number> = {
+  data: 8,
+  pep: 17, // reduzido em 42% (28% -> 16.24%)
+  valorProgramado: 9.5,
+  valorConcluido: 8.5,
+  valorParcial: 6.5,
+  valorCancelado: 8.5,
+  statusProg: 10.8,
+  motivoNaoCumprimento: 18, // recebeu o excedente para manter 100% total
+  motivoPrioridade: 8.5,
+  hash: 3.5,
+  };
+  const getPercent = (key: ColumnKey) => colPercents[key];
 
   useEffect(() => {
     const prevTitle = document.title;
@@ -261,7 +276,6 @@ export default function Programacao() {
 
   // Carregar dados da aba 'programação' usando o backend (recomendado)
   async function loadFromProgramacao() {
-    setLoadingSheet(true);
     try {
       const res = await getProgramacao();
   const data = (res.data || []) as Record<string, unknown>[];
@@ -365,41 +379,47 @@ export default function Programacao() {
     } catch (err) {
       console.error('Erro ao carregar programacao:', err);
       showToast('Erro ao carregar programação via backend. Verifique logs do servidor.');
-    } finally {
-      setLoadingSheet(false);
-    }
+  }
   }
 
   // Exportar Excel
   const handleExportExcel = () => {
-  const worksheet = XLSX.utils.json_to_sheet(filteredData.matrix.map(row => ({ 'Data': row.data, 'Serviço': row.pep, 'Programado': row.valorProgramado, 'Concluido': row.valorConcluido, 'Parcial': row.valorParcial, 'Cancelado': row.valorCancelado, 'Status': row.statusProg, 'Motivo': row.motivoNaoCumprimento, '#': getHashEmoji(row) })));
+  const worksheet = XLSX.utils.json_to_sheet(filteredData.matrix.map(row => ({ 'Data': row.data, 'Serviço': row.pep, 'Programado': row.valorProgramado, 'Concluido': row.valorConcluido, 'Parcial': row.valorParcial, 'Cancelado': row.valorCancelado, 'Status': row.statusProg, 'Motivo': row.motivoNaoCumprimento, 'Prioridade': row.motivoPrioridade, '#': getHashEmoji(row) })));
     const workbook = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(workbook, worksheet, 'Programacao'); XLSX.writeFile(workbook, 'programacao.xlsx'); showToast('Arquivo Excel exportado com sucesso!');
   };
 
   // Retorna o emoji apropriado para a coluna '#'
-    const getHashEmoji = (row: Record<string, unknown>): string => {
-      const rowAny = row as Record<string, unknown>;
-      const rawHash = rowAny['#'] ?? rowAny['Hash'] ?? rowAny['hash'];
-      const candidate = rawHash ?? rowAny['prioridade'] ?? rowAny['Motivo Prioridade'] ?? rowAny['motivoPrioridade'] ?? rowAny['statusProg'] ?? rowAny['statusSap'] ?? '';
-        // normalize, remove diacritics and non-alphanumerics, then lowercase
-        const normalized = String(candidate || '').normalize('NFD').replace(/[^\u0000-\u007F]/g, m => m).replace(/[^\u0000-\u007F]/g, m => m);
-        const noDiacritics = normalized.replace(/[^\u0000-\u007F]/g, '');
-        const v = String(candidate || '')
-          .normalize('NFD')
-          .replace(/[^\u0000-\u007F]/g, '')
-          .replace(/[\u0300-\u036f]/g, '')
-          .replace(/[^a-zA-Z0-9]/g, '')
-          .toLowerCase();
-        if (!v) return '';
-        // match roots to be tolerant: 'vermelh' covers 'vermelho' and variants
-        if (v.includes('vermelh') || v.includes('red')) return '🔴';
-        if (v.includes('amarel') || v.includes('yellow')) return '🟡';
-        if (v.includes('caveir') || v.includes('skull') || v.includes('☠')) return '💀';
-      return '';
-    };
+  const getHashEmoji = (row: Record<string, unknown>): string => {
+    const rowAny = row as Record<string, unknown>;
+    const rawHash = rowAny['#'] ?? rowAny['Hash'] ?? rowAny['hash'];
+    const candidate = rawHash ?? rowAny['prioridade'] ?? rowAny['Motivo Prioridade'] ?? rowAny['motivoPrioridade'] ?? rowAny['statusProg'] ?? rowAny['statusSap'] ?? '';
+    const v = String(candidate || '')
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/[^a-zA-Z0-9]/g, '')
+      .toLowerCase();
+    if (!v) return '';
+    if (v.includes('vermelh') || v.includes('red')) return '🔴';
+    if (v.includes('amarel') || v.includes('yellow')) return '🟡';
+    if (v.includes('caveir') || v.includes('skull')) return '💀';
+    return '';
+  };
 
   const totalValue = React.useMemo(() => filteredData.matrix.reduce((sum, row) => sum + (row.valorProgramado || 0), 0), [filteredData.matrix]);
   const totalPep = React.useMemo(() => filteredData.matrix.length, [filteredData.matrix.length]);
+
+  // Cores do badge de status
+  const getStatusBadgeClass = (status: string) => {
+    const v = String(status || '')
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .toLowerCase();
+    if (v.includes('program')) return 'bg-blue-100 text-blue-700 border border-blue-300';
+    if (v.includes('conclu')) return 'bg-green-100 text-green-700 border border-green-300';
+    if (v.includes('cancel')) return 'bg-red-100 text-red-700 border border-red-300';
+    if (v.includes('parci')) return 'bg-yellow-100 text-yellow-800 border border-yellow-300';
+    return 'bg-gray-100 text-gray-700 border border-gray-300';
+  };
 
   return (
     <div className="relative z-10 min-h-screen bg-transparent lovable">
@@ -435,7 +455,7 @@ export default function Programacao() {
         </div>
       </header>
 
-  <div className="relative flex" style={{ paddingTop: 'calc(4rem + 16px)' }}>
+  <div className="relative flex [--gap:8px] sm:[--gap:16px] lg:[--gap:24px]" style={{ paddingTop: 'calc(4rem + var(--gap))' }}>
         {sidebarOpen && (<div className="fixed inset-0 z-40 bg-black/50 lg:hidden" onClick={() => setSidebarOpen(false)} />)}
 
         <aside className={cn("fixed left-0 top-16 bottom-0 w-64 bg-white border-r border-gray-200 shadow-md overflow-y-auto z-50 transition-transform duration-300","lg:translate-x-0 lg:fixed lg:z-auto lg:h-[calc(100vh-4rem)]", sidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0")} style={{ direction: 'rtl' }}>
@@ -475,7 +495,7 @@ export default function Programacao() {
           </div>
         </aside>
 
-        <main className="flex-1 w-full p-2 sm:p-4 lg:p-6 lg:ml-64">
+  <main className="flex-1 w-full px-[var(--gap)] py-[var(--gap)] lg:ml-64">
           <div className="mb-8">
             {/* Removido o grid de gráficos; página foca em Programação e matriz */}
           </div>
@@ -491,18 +511,50 @@ export default function Programacao() {
             </CardHeader>
             <CardContent className="p-0">
               <div className="overflow-x-auto" ref={tableWrapperRef}>
-                <Table>
+                <Table style={{ tableLayout: 'fixed' }}>
+                  {/* Define larguras pelo colgroup para garantir aplicação consistente */}
+                  <colgroup>
+                    <col style={{ width: `${getPercent('data')}%` }} />
+                    <col style={{ width: `${getPercent('pep')}%` }} />
+                    <col style={{ width: `${getPercent('valorProgramado')}%` }} />
+                    <col style={{ width: `${getPercent('valorConcluido')}%` }} />
+                    <col style={{ width: `${getPercent('valorParcial')}%` }} />
+                    <col style={{ width: `${getPercent('valorCancelado')}%` }} />
+                    <col style={{ width: `${getPercent('statusProg')}%` }} />
+                    <col style={{ width: `${getPercent('motivoNaoCumprimento')}%` }} />
+                    <col style={{ width: `${getPercent('motivoPrioridade')}%` }} />
+                    <col style={{ width: `${getPercent('hash')}%` }} />
+                  </colgroup>
                   <TableHeader>
                     <TableRow className="bg-gray-50 hover:bg-gray-100">
-                      <TableHead className="font-semibold text-gray-700 transition-colors cursor-pointer select-none hover:bg-gray-200" onClick={() => handleSort('data')}><div className="flex items-center gap-2">Data {getSortIcon('data')}</div></TableHead>
-                      <TableHead className="font-semibold text-gray-700 transition-colors cursor-pointer select-none hover:bg-gray-200 whitespace-nowrap min-w-[210px]" onClick={() => handleSort('pep')}><div className="flex items-center gap-2">Serviço {getSortIcon('pep')}</div></TableHead>
-                      <TableHead className="font-semibold text-gray-700 transition-colors cursor-pointer select-none hover:bg-gray-200" onClick={() => handleSort('valorProgramado')}><div className="flex items-center gap-2">Programado {getSortIcon('valorProgramado')}</div></TableHead>
-                      <TableHead className="font-semibold text-gray-700 transition-colors cursor-pointer select-none hover:bg-gray-200" onClick={() => handleSort('valorConcluido')}><div className="flex items-center gap-2">Concluido {getSortIcon('valorConcluido')}</div></TableHead>
-                      <TableHead className="font-semibold text-gray-700 transition-colors cursor-pointer select-none hover:bg-gray-200" onClick={() => handleSort('valorParcial')}><div className="flex items-center gap-2">Parcial {getSortIcon('valorParcial')}</div></TableHead>
-                      <TableHead className="font-semibold text-gray-700 transition-colors cursor-pointer select-none hover:bg-gray-200" onClick={() => handleSort('valorCancelado')}><div className="flex items-center gap-2">Cancelado {getSortIcon('valorCancelado')}</div></TableHead>
-                      <TableHead className="font-semibold text-gray-700 transition-colors cursor-pointer select-none hover:bg-gray-200" onClick={() => handleSort('statusProg')}><div className="flex items-center gap-2">Status {getSortIcon('statusProg')}</div></TableHead>
-                      <TableHead className="w-14 font-semibold text-gray-700 transition-colors cursor-pointer select-none hover:bg-gray-200">Motivo</TableHead>
-                      <TableHead className="font-semibold text-gray-700 transition-colors cursor-pointer select-none hover:bg-gray-200">#</TableHead>
+                      {([
+                        { key: 'data', label: 'Data', sortable: true },
+                        { key: 'pep', label: 'Serviços', sortable: true },
+                        { key: 'valorProgramado', label: 'Programado', sortable: true },
+                        { key: 'valorConcluido', label: 'Concluido', sortable: true },
+                        { key: 'valorParcial', label: 'Parcial', sortable: true },
+                        { key: 'valorCancelado', label: 'Cancelado', sortable: true },
+                        { key: 'statusProg', label: 'Status', sortable: true },
+                        { key: 'motivoNaoCumprimento', label: 'Motivo', sortable: false },
+                        { key: 'motivoPrioridade', label: 'Prioridade', sortable: false },
+                        { key: 'hash', label: '#', sortable: false },
+                      ] as { key: ColumnKey; label: string; sortable?: boolean }[]).map(col => (
+            <TableHead
+                          key={col.key}
+                          className={`relative font-semibold text-gray-700 transition-colors select-none hover:bg-gray-200 ${col.key !== 'hash' ? 'cursor-pointer' : ''} ${col.key === 'pep' ? 'whitespace-nowrap' : ''}`}
+                          style={{ width: `${getPercent(col.key)}%`, minWidth: 0 }}
+                          onClick={() => {
+                            if (col.sortable) handleSort(col.key as keyof MatrixRow);
+                          }}
+                        >
+                          <div className={cn(
+                            "flex items-center gap-2 truncate",
+                            ['pep','statusProg','motivoNaoCumprimento'].includes(col.key) ? 'justify-center text-center' : ''
+                          )}>
+                            {col.label} {col.sortable ? getSortIcon(col.key as keyof MatrixRow) : null}
+                          </div>
+                        </TableHead>
+                      ))}
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -520,15 +572,37 @@ export default function Programacao() {
                                                 { id: 'copy-table', label: 'COPIAR TABELA', onClick: () => { const selected = (Array.isArray(selectedMatrixRows) && selectedMatrixRows.length) ? selectedMatrixRows : [row.pep]; const rowsToCopy = filteredData.matrix.filter(r => selected.includes(r.pep)); const tsv = rowsToCopy.map(r => [r.pep, r.data, r.statusProg, r.valorProgramado].join('\t')).join('\n'); navigator.clipboard.writeText(tsv).then(() => showToast('Tabela copiada!')).catch(() => showToast('Erro ao copiar')); setContextOpen(false); } }
                         ]); setContextOpen(true);
                       }} onAuxClick={(e: React.MouseEvent) => { if ((e as React.MouseEvent).button === 1) { e.preventDefault(); const raw = String(row.valorProgramado || '0'); navigator.clipboard.writeText(raw).then(() => { showToast(`Valor R$ ${row.valorProgramado.toLocaleString('pt-BR')} copiado!`); }).catch(() => showToast('Erro ao copiar valor')); } }} title="Ctrl/Cmd+clique para selecionar múltiplas linhas. Clique com o botão direito para abrir menu de copiar">
-                        <TableCell className="font-mono text-sm truncate">{row.data}</TableCell>
-                        <TableCell className="font-mono text-sm truncate min-w-[210px]">{row.pep}</TableCell>
-                        <TableCell className="text-sm text-right truncate">{row.valorProgramado.toLocaleString('pt-BR')}</TableCell>
-                        <TableCell className="text-sm text-right truncate">{row.valorConcluido.toLocaleString('pt-BR')}</TableCell>
-                        <TableCell className="text-sm text-right truncate">{row.valorParcial.toLocaleString('pt-BR')}</TableCell>
-                        <TableCell className="text-sm text-right truncate">{row.valorCancelado.toLocaleString('pt-BR')}</TableCell>
-                        <TableCell className="truncate"><span className={`px-3 py-1 rounded-full text-xs font-medium ${row.statusProg === 'Concluído' ? 'bg-green-100 text-green-700 border border-green-300' : 'bg-yellow-100 text-yellow-800 border border-yellow-300'}`}>{row.statusProg}</span></TableCell>
-                        <TableCell className="w-14 text-sm truncate">{row.motivoNaoCumprimento}</TableCell>
-                        <TableCell className="w-12 text-center">{getHashEmoji(row)}</TableCell>
+                        {([
+                          { key: 'data' as ColumnKey },
+                          { key: 'pep' as ColumnKey },
+                          { key: 'valorProgramado' as ColumnKey },
+                          { key: 'valorConcluido' as ColumnKey },
+                          { key: 'valorParcial' as ColumnKey },
+                          { key: 'valorCancelado' as ColumnKey },
+                          { key: 'statusProg' as ColumnKey },
+                          { key: 'motivoNaoCumprimento' as ColumnKey },
+                          { key: 'motivoPrioridade' as ColumnKey },
+                          { key: 'hash' as ColumnKey },
+                        ]).map(col => {
+                          const style = { width: `${getPercent(col.key)}%`, minWidth: 0 } as React.CSSProperties;
+                          let content: React.ReactNode = null;
+                          let className = 'overflow-hidden text-sm truncate whitespace-nowrap text-ellipsis';
+                          if (col.key === 'data') { content = row.data; className = 'font-mono text-sm truncate'; }
+                          else if (col.key === 'pep') { content = row.pep; className = 'font-mono text-sm truncate'; }
+                          else if (col.key === 'valorProgramado') { content = row.valorProgramado.toLocaleString('pt-BR'); className = 'text-sm text-right truncate'; }
+                          else if (col.key === 'valorConcluido') { content = row.valorConcluido.toLocaleString('pt-BR'); className = 'text-sm text-right truncate'; }
+                          else if (col.key === 'valorParcial') { content = row.valorParcial.toLocaleString('pt-BR'); className = 'text-sm text-right truncate'; }
+                          else if (col.key === 'valorCancelado') { content = row.valorCancelado.toLocaleString('pt-BR'); className = 'text-sm text-right truncate'; }
+                          else if (col.key === 'statusProg') { content = (<span className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusBadgeClass(row.statusProg)}`}>{row.statusProg}</span>); className = 'truncate'; }
+                          else if (col.key === 'motivoNaoCumprimento') { content = row.motivoNaoCumprimento; className = 'overflow-hidden text-sm truncate whitespace-nowrap text-ellipsis'; }
+                          else if (col.key === 'motivoPrioridade') { content = row.motivoPrioridade; className = 'overflow-hidden text-sm truncate whitespace-nowrap text-ellipsis'; }
+                          else if (col.key === 'hash') { content = getHashEmoji(row as unknown as Record<string, unknown>); className = 'text-center'; }
+                          return (
+                            <TableCell key={col.key} className={className} style={style}>
+                              {content}
+                            </TableCell>
+                          );
+                        })}
                       </TableRow>
                     ))}
                   </TableBody>
