@@ -1,5 +1,5 @@
 // src/App.tsx
-import { BrowserRouter as Router, Routes, Route, Navigate, useNavigate } from 'react-router-dom'
+import { BrowserRouter as Router, Routes, Route, Navigate, useNavigate, Outlet } from 'react-router-dom'
 import { Toaster } from 'sonner'
 
 // Import das páginas essenciais para este fluxo
@@ -36,17 +36,33 @@ function AppContent() {
   return (
     <Routes>
       <Route path="/login" element={<Login onLogin={handleLogin} />} />
-  <Route path="/home" element={<Home />} />
-  <Route path="/prazos-sap1" element={<PrazosSAP />} />
-  <Route path="/prazos-sap-1" element={<PrazosSAP />} />
-  <Route path="/prazos-sap" element={<PrazosSAP />} />
-  <Route path="/teste" element={<TestePagina />} />
-  <Route path="/programacao" element={<Programacao />} />
-      <Route path="/teste-botao" element={<TesteBotao />} />
-      <Route path="/prazos-sap-simples" element={<PrazosSAPSimples />} />
-  <Route path="/obras" element={<Obras />} />
-  <Route path="/" element={<PrazosSAP />} />
-  <Route path="*" element={<Navigate to="/prazos-sap" replace />} />
+
+      {/* RequireAuth protege as rotas abaixo e redireciona ao /login quando não autenticado */}
+      <Route
+        element={(
+          function RequireAuth() {
+            const logado = localStorage.getItem('logado') === 'true'
+            return logado ? <Outlet /> : <Navigate to="/login" replace />
+          }
+        )()}
+      >
+        <Route path="/home" element={<Home />} />
+        <Route path="/prazos-sap1" element={<PrazosSAP />} />
+        <Route path="/prazos-sap-1" element={<PrazosSAP />} />
+        <Route path="/prazos-sap" element={<PrazosSAP />} />
+        <Route path="/teste" element={<TestePagina />} />
+        <Route path="/programacao" element={<Programacao />} />
+        <Route path="/teste-botao" element={<TesteBotao />} />
+        <Route path="/prazos-sap-simples" element={<PrazosSAPSimples />} />
+        <Route path="/obras" element={<Obras />} />
+        {/* se o usuário acessar a raiz estando autenticado, mandamos para /home */}
+        <Route path="/" element={<Navigate to="/home" replace />} />
+        <Route path="*" element={<Navigate to="/home" replace />} />
+      </Route>
+
+      {/* raiz pública aponta para login */}
+      <Route path="/" element={<Navigate to="/login" replace />} />
+      <Route path="*" element={<Navigate to="/login" replace />} />
     </Routes>
   )
 }
