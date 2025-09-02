@@ -137,6 +137,28 @@ export default function PrazosSAP() {
 	const comparisonRef = useRef<HTMLDivElement>(null);
 	const statusCONCRef = useRef<HTMLDivElement>(null);
 	const reasonsRef = useRef<HTMLDivElement>(null);
+	// Ref para o wrapper da tabela (usado para rolamento automático)
+	const tableWrapperRef = useRef<HTMLDivElement | null>(null);
+
+	// Helper para rolar a linha visível ao navegar por teclado/seleção
+	const scrollToRow = (idx: number) => {
+		try {
+			const container = tableWrapperRef.current;
+			let el: HTMLElement | null = null;
+			if (container) {
+				el = container.querySelector(`[data-row-index="${idx}"]`);
+			}
+			if (!el) {
+				el = document.querySelector(`[data-row-index="${idx}"]`);
+			}
+			if (el) {
+				el.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+			}
+		} catch (err) {
+			// falhar silenciosamente se algo der errado
+			console.debug('scrollToRow error', err);
+		}
+	};
 
 	// Renderizador de rótulos: quando a barra estiver ativa, usa preto e negrito
 	const makeLabelRenderer = (
@@ -313,31 +335,77 @@ export default function PrazosSAP() {
 		} as DashboardData;
 	}, [rawRows, selectedRegion, activeFilters, pepSearch, sortConfig, statusEnerMap, statusConcMap, reasonsMap]);
 
-	// Atalho: Ctrl/Cmd + Shift + ArrowDown => selecionar até o fim a partir do lastSelectedIndex
+	// Handler de teclado: navegação por setas e seleções estendidas
 	useEffect(() => {
 		const handler = (ev: KeyboardEvent) => {
-			const isMod = ev.ctrlKey || ev.metaKey;
-			if (!isMod || !ev.shiftKey) return;
-			if (ev.key === 'ArrowDown') {
+			// não interferir quando um input/textarea ou elemento editável estiver focado
+			const active = document.activeElement as HTMLElement | null;
+			if (active && (active.tagName === 'INPUT' || active.tagName === 'TEXTAREA' || active.isContentEditable)) return;
+
+			const rows = (filteredData && Array.isArray(filteredData.matrix)) ? filteredData.matrix : [];
+			if (!rows.length) return;
+
+			// Ctrl/Cmd + Shift + ArrowDown => selecionar até o fim (comportamento já existente)
+			if ((ev.ctrlKey || ev.metaKey) && ev.shiftKey && ev.key === 'ArrowDown') {
 				ev.preventDefault();
-				// se não há um lastSelectedIndex conhecido, selecionar da primeira linha
 				const start = (typeof lastSelectedIndex === 'number' && lastSelectedIndex >= 0) ? lastSelectedIndex : 0;
-				// pegar todos os PEPs a partir de start até o final do filteredData.matrix
-				const rows = (filteredData && Array.isArray(filteredData.matrix)) ? filteredData.matrix : [];
-				if (!Array.isArray(rows) || rows.length === 0) return;
 				const toSelect = rows.slice(start).map(r => r.pep);
+				// preserva seleção anterior antes do start quando existir
 				setSelectedMatrixRows(prev => {
-					// combinar com seleção atual (preservando anteriores antes do start)
-					const prefix = Array.isArray(prev) ? prev.slice(0, start).filter(Boolean) : [];
+					const prefix = Array.isArray(prev) ? prev.filter(p => {
+						const idx = rows.findIndex(r => r.pep === p);
+						return idx >= 0 && idx < start;
+					}) : [];
 					return Array.from(new Set([...prefix, ...toSelect]));
 				});
-				// marcar último índice como o fim
 				setLastSelectedIndex(rows.length - 1);
+				scrollToRow(rows.length - 1);
+				return;
+			}
+
+			// ArrowDown / ArrowUp navegação simples
+			if (ev.key === 'ArrowDown' || ev.key === 'ArrowUp') {
+				ev.preventDefault();
+				// determina índice atual: preferir lastSelectedIndex, caso contrário usar primeiro selecionado
+				let current = typeof lastSelectedIndex === 'number' && lastSelectedIndex >= 0 ? lastSelectedIndex : -1;
+				if (current === -1 && Array.isArray(selectedMatrixRows) && selectedMatrixRows.length) {
+					const firstPep = selectedMatrixRows[0];
+					const idx = rows.findIndex(r => r.pep === firstPep);
+					if (idx >= 0) current = idx;
+				}
+
+				const dir = ev.key === 'ArrowDown' ? 1 : -1;
+				let next = current + dir;
+				if (next < 0) next = 0;
+				if (next > rows.length - 1) next = rows.length - 1;
+
+				if (ev.shiftKey && current >= 0) {
+					// estender seleção entre current e next, preservando seleção fora do intervalo atual
+					const start = Math.min(current, next);
+					const end = Math.max(current, next);
+					const range = rows.slice(start, end + 1).map(r => r.pep);
+					setSelectedMatrixRows(prev => {
+						const preserved = Array.isArray(prev) ? prev.filter(p => {
+							const idx = rows.findIndex(r => r.pep === p);
+							return idx === -1 || idx < start || idx > end; // mantém itens fora do novo intervalo
+						}) : [];
+						return Array.from(new Set([...preserved, ...range]));
+					});
+					setLastSelectedIndex(next);
+					scrollToRow(next);
+					return;
+				}
+
+				// sem shift: selecionar apenas a próxima linha (substitui seleção)
+				setSelectedMatrixRows([rows[next].pep]);
+				setLastSelectedIndex(next);
+				scrollToRow(next);
+				return;
 			}
 		};
 		document.addEventListener('keydown', handler);
 		return () => document.removeEventListener('keydown', handler);
-	}, [lastSelectedIndex, filteredData]);
+	}, [lastSelectedIndex, filteredData, selectedMatrixRows]);
 
 	// Atualiza lista de regiões conforme dados carregados (sem aplicar filtros interativos)
 	useEffect(() => {
@@ -861,7 +929,7 @@ export default function PrazosSAP() {
 							</Button>
 						</CardHeader>
 						<CardContent className="p-0">
-							<div className="overflow-x-auto">
+							<div className="overflow-x-auto" ref={tableWrapperRef}>
 								<Table>
 									<TableHeader>
 										<TableRow className="bg-gray-50 hover:bg-gray-100">
@@ -885,6 +953,7 @@ export default function PrazosSAP() {
 									<TableBody>
 										{filteredData.matrix.map((row, index) => (
 											<TableRow
+												data-row-index={index}
 												key={index}
 												className={cn(
 													"cursor-pointer transition-all duration-200 select-none",
@@ -893,6 +962,23 @@ export default function PrazosSAP() {
 														: "hover:bg-gray-50"
 												)}
 												onClick={(e: React.MouseEvent) => {
+												// Shift+click => range select (preserva seleção existente fora do intervalo)
+												if (e.shiftKey && typeof lastSelectedIndex === 'number' && lastSelectedIndex !== null) {
+													e.preventDefault();
+													const start = Math.min(lastSelectedIndex, index);
+													const end = Math.max(lastSelectedIndex, index);
+													const range = filteredData.matrix.slice(start, end + 1).map(r => r.pep);
+													setSelectedMatrixRows(prev => {
+														const preserved = Array.isArray(prev) ? prev.filter(p => {
+															const idx = filteredData.matrix.findIndex(r => r.pep === p);
+															return idx === -1 || idx < start || idx > end; // mantém itens fora do novo intervalo
+														}) : [];
+														return Array.from(new Set([...preserved, ...range]));
+													});
+													setLastSelectedIndex(index);
+													scrollToRow(index);
+													return;
+												}
 												// Ctrl (Windows/Linux) ou Meta (Mac) -> toggle selection
 												if ((e.ctrlKey || e.metaKey)) {
 													e.preventDefault();
@@ -902,12 +988,15 @@ export default function PrazosSAP() {
 													});
 													// atualiza índice do último clique
 													setLastSelectedIndex(index);
+													scrollToRow(index);
 												} else {
 													// single selection
 													setSelectedMatrixRows([row.pep]);
 													setLastSelectedIndex(index);
+													scrollToRow(index);
 												}
-											}}
+												}
+											}
 											onContextMenu={(e: React.MouseEvent) => {
 												e.preventDefault();
 												// open reusable context menu with two actions
