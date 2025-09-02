@@ -24,7 +24,12 @@ export default function Programacao() {
   const [selectedStartDate, setSelectedStartDate] = useState<Date | undefined>(undefined);
   const [selectedEndDate, setSelectedEndDate] = useState<Date | undefined>(undefined);
   const [selectedStatusSap, setSelectedStatusSap] = useState<string>('');
-  const [selectedTipo, setSelectedTipo] = useState<string>('');
+  const [selectedTipo, setSelectedTipo] = useState<string>(() => {
+    const now = new Date();
+    let m = now.getMonth() + 1; // 1..12
+    if (now.getDate() > 15) m = m === 12 ? 1 : m + 1; // próximo mês após dia 15
+    return String(m);
+  });
   const [selectedMes, setSelectedMes] = useState<string>('');
   const [selectedMatrixRows, setSelectedMatrixRows] = useState<string[]>([]);
   const [lastSelectedIndex, setLastSelectedIndex] = useState<number | null>(null);
@@ -95,9 +100,18 @@ export default function Programacao() {
   const clearPepSearch = () => { setPepSearch(''); showToast('Pesquisa PEP limpa!'); };
 
   const handleSort = (key: keyof MatrixRow) => {
-    let direction: 'asc' | 'desc' = 'asc';
-    if (sortConfig.key === key && sortConfig.direction === 'asc') direction = 'desc';
-    setSortConfig({ key, direction });
+    // se for a mesma coluna, alterna
+    if (sortConfig.key === key) {
+      setSortConfig({ key, direction: sortConfig.direction === 'asc' ? 'desc' : 'asc' });
+      return;
+    }
+    // primeira vez: numéricos e datas começam em 'desc' (maior → menor / mais novo → mais antigo)
+    const numericKeys: (keyof MatrixRow)[] = ['valorProgramado', 'valorConcluido', 'valorParcial', 'valorCancelado'];
+    if (numericKeys.includes(key) || key === 'data') {
+      setSortConfig({ key, direction: 'desc' });
+    } else {
+      setSortConfig({ key, direction: 'asc' });
+    }
   };
 
   const getSortIcon = (columnKey: keyof MatrixRow) => {
@@ -249,19 +263,23 @@ export default function Programacao() {
     // tiposList => Mês Ciclo (coluna 'Mês Ciclo')
     // mesesList => Ano ciclo (coluna 'Ano ciclo')
     const invalid = new Set(['', null, undefined, '#N/A', 'N/A', 'na', 'NaN']);
-    const statusSet = new Set<string>();
-    const mesCicloSet = new Set<string>();
+  const statusSet = new Set<string>();
+  const mesCicloSet = new Set<string>();
     const anoSet = new Set<string>();
     for (const r of rawRows) {
       const s = (r.statusSap || '').toString().trim();
-      const mes = (r.tipo || '').toString().trim(); // tipo conterá 'Mês Ciclo' ao carregar
+  const mes = (r.tipo || '').toString().trim(); // tipo conterá 'Mês Ciclo' ao carregar
       const ano = String((r as unknown as Record<string, unknown>).anoCiclo ?? '').trim();
       if (s && !invalid.has(s)) statusSet.add(s);
-      if (mes && !invalid.has(mes)) mesCicloSet.add(mes);
+      if (mes && !invalid.has(mes)) {
+        const n = parseInt(String(mes), 10);
+        if (!Number.isNaN(n) && n >= 1 && n <= 12) mesCicloSet.add(String(n));
+        else mesCicloSet.add(mes);
+      }
       if (ano && !invalid.has(ano)) anoSet.add(ano);
     }
-    setStatusSapList(Array.from(statusSet).sort());
-    setTiposList(Array.from(mesCicloSet).sort());
+  setStatusSapList(Array.from(statusSet).sort());
+  setTiposList(Array.from(mesCicloSet).sort((a, b) => (parseInt(String(a), 10) || 0) - (parseInt(String(b), 10) || 0)));
     setMesesList(Array.from(anoSet).sort());
   }, [rawRows]);
 
@@ -408,6 +426,23 @@ export default function Programacao() {
   const totalValue = React.useMemo(() => filteredData.matrix.reduce((sum, row) => sum + (row.valorProgramado || 0), 0), [filteredData.matrix]);
   const totalPep = React.useMemo(() => filteredData.matrix.length, [filteredData.matrix.length]);
 
+  // Formatação de valores curtos (igual PrazosSAP)
+  const numberFmt2 = React.useMemo(() => new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }), []);
+  const formatValorShort = (n: number) => {
+    const abs = Math.abs(n);
+    if (abs >= 1_000_000) return `${numberFmt2.format(n / 1_000_000)} Mi`;
+    if (abs >= 1_000) return `${numberFmt2.format(n / 1_000)} Mil`;
+    return numberFmt2.format(n);
+  };
+
+  // Nome do mês para "Mês Ciclo" no filtro (1→janeiro, 2→fevereiro, ...)
+  const monthNamePt = (value: string) => {
+    const names = ['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];
+    const n = parseInt(String(value).trim(), 10);
+    if (!Number.isNaN(n) && n >= 1 && n <= 12) return names[n - 1];
+    return String(value);
+  };
+
   // Cores do badge de status
   const getStatusBadgeClass = (status: string) => {
     const v = String(status || '')
@@ -445,7 +480,7 @@ export default function Programacao() {
           <div className="flex items-center gap-2 lg:gap-4">
             <div className="flex items-center gap-2 lg:gap-3">
               <span className="hidden text-xs text-white lg:text-sm sm:inline">Valor Total</span>
-              <div className="px-2 py-1 text-sm font-semibold text-green-600 bg-white rounded-lg shadow-md lg:px-4 lg:py-2 lg:rounded-xl lg:text-base w-[105px] text-center whitespace-nowrap">R$ {totalValue.toLocaleString('pt-BR')}</div>
+              <div className="px-2 py-1 text-sm font-semibold text-green-600 bg-white rounded-lg shadow-md lg:px-4 lg:py-2 lg:rounded-xl lg:text-base w-[105px] text-center whitespace-nowrap">{formatValorShort(totalValue)}</div>
             </div>
             <div className="flex items-center gap-2 lg:gap-3">
               <span className="hidden text-xs text-white lg:text-sm sm:inline">PEP</span>
@@ -455,7 +490,7 @@ export default function Programacao() {
         </div>
       </header>
 
-  <div className="relative flex [--gap:8px] sm:[--gap:16px] lg:[--gap:24px]" style={{ paddingTop: 'calc(4rem + var(--gap))' }}>
+  <div className="relative flex [--gap:8px] sm:[--gap:16px] lg:[--gap:24px]" style={{ paddingTop: 'calc(3rem + 10px)' }}>
         {sidebarOpen && (<div className="fixed inset-0 z-40 bg-black/50 lg:hidden" onClick={() => setSidebarOpen(false)} />)}
 
         <aside className={cn("fixed left-0 top-16 bottom-0 w-64 bg-white border-r border-gray-200 shadow-md overflow-y-auto z-50 transition-transform duration-300","lg:translate-x-0 lg:fixed lg:z-auto lg:h-[calc(100vh-4rem)]", sidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0")} style={{ direction: 'rtl' }}>
@@ -477,7 +512,11 @@ export default function Programacao() {
               </select>
               <select value={selectedTipo} onChange={(e) => setSelectedTipo(e.target.value)} className={`w-full h-10 px-3 text-sm border rounded-xl shadow-md transition-all duration-200 hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-green-500 ${selectedTipo ? 'bg-green-600 text-white border-green-600' : 'bg-white text-gray-900 border-gray-200'}`}>
                 <option value="">Mês Ciclo</option>
-                {tiposList.map((t) => (<option key={t} value={t}>{t}</option>))}
+                {[...tiposList]
+                  .sort((a, b) => (parseInt(String(a), 10) || 0) - (parseInt(String(b), 10) || 0))
+                  .map((t) => (
+                    <option key={t} value={t}>{monthNamePt(String(t))}</option>
+                  ))}
               </select>
               <select value={selectedMes} onChange={(e) => setSelectedMes(e.target.value)} className={`w-full h-10 px-3 text-sm border rounded-xl shadow-md transition-all duration-200 hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-green-500 ${selectedMes ? 'bg-green-600 text-white border-green-600' : 'bg-white text-gray-900 border-gray-200'}`}>
                 <option value="">Ano ciclo</option>
@@ -495,7 +534,7 @@ export default function Programacao() {
           </div>
         </aside>
 
-  <main className="flex-1 w-full px-[var(--gap)] py-[var(--gap)] lg:ml-64">
+  <main className="flex-1 w-full px-[var(--gap)] pt-0 pb-[var(--gap)] lg:ml-64">
           <div className="mb-8">
             {/* Removido o grid de gráficos; página foca em Programação e matriz */}
           </div>
@@ -535,8 +574,8 @@ export default function Programacao() {
                         { key: 'valorParcial', label: 'Parcial', sortable: true },
                         { key: 'valorCancelado', label: 'Cancelado', sortable: true },
                         { key: 'statusProg', label: 'Status', sortable: true },
-                        { key: 'motivoNaoCumprimento', label: 'Motivo', sortable: false },
-                        { key: 'motivoPrioridade', label: 'Prioridade', sortable: false },
+                        { key: 'motivoNaoCumprimento', label: 'Motivo', sortable: true },
+                        { key: 'motivoPrioridade', label: 'Prioridade', sortable: true },
                         { key: 'hash', label: '#', sortable: false },
                       ] as { key: ColumnKey; label: string; sortable?: boolean }[]).map(col => (
             <TableHead

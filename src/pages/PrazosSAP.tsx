@@ -601,7 +601,7 @@ export default function PrazosSAP() {
 						<div className="flex items-center gap-2 lg:gap-3">
 							<span className="hidden text-xs text-white lg:text-sm sm:inline">Valor Total</span>
 							<div className="px-2 py-1 text-sm font-semibold text-green-600 bg-white rounded-lg shadow-md lg:px-4 lg:py-2 lg:rounded-xl lg:text-base w-[105px] text-center whitespace-nowrap">
-								R$ {formatValorShort(totalValue)}
+								{formatValorShort(totalValue)}
 							</div>
 						</div>
 						<div className="flex items-center gap-2 lg:gap-3">
@@ -614,7 +614,7 @@ export default function PrazosSAP() {
 				</div>
 			</header>
 
-			<div className="relative flex pt-16">
+			<div className="relative flex" style={{ paddingTop: 'calc(4rem + 16px)' }}>
 				{sidebarOpen && (
 					<div className="fixed inset-0 z-40 bg-black/50 lg:hidden" onClick={() => setSidebarOpen(false)} />
 				)}
@@ -695,7 +695,7 @@ export default function PrazosSAP() {
 					</div>
 				</aside>
 
-				<main className="flex-1 w-full p-2 sm:p-4 lg:p-6 lg:ml-64">
+				<main className="flex-1 w-full px-2 sm:px-4 lg:px-6 pt-0 pb-2 sm:pb-4 lg:pb-6 lg:ml-64">
 					<div className="lg:h-[calc(100vh-8rem)] lg:min-h-[500px] lg:max-h-[calc(100vh-8rem)] mb-8">
 						<div className="grid grid-cols-1 gap-3 lg:grid-cols-2 lg:gap-3 lg:h-full lg:grid-rows-2">
 								<Card className="shadow-card hover:shadow-card-hover bg-white border-gray-200 transform transition-all duration-300 hover:scale-[1.02] overflow-hidden" ref={statusENERRef} tabIndex={0}>
