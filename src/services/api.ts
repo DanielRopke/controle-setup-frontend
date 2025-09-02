@@ -141,6 +141,10 @@ export function getMatrizDados(params: Record<string, string> = {}) {
   return axios.get(`${API_BASE}/matriz-dados/`, { params })
 }
 
+export function getProgramacao(params: Record<string, string> = {}) {
+  return axios.get(`${API_BASE}/programacao/`, { params })
+}
+
 export function getStatusEnerPep(params: Record<string, string> = {}) {
   return axios.get(`${API_BASE}/status-ener-pep/`, { params })
 }
