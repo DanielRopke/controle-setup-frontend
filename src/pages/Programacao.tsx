@@ -54,7 +54,7 @@ export default function Programacao() {
     motivoPrioridade: string;
     prioridade: string;
   };
-  const [sortConfig, setSortConfig] = useState<{ key?: keyof MatrixRow; direction?: 'asc' | 'desc' }>({});
+  const [sortConfig, setSortConfig] = useState<{ key?: keyof MatrixRow; direction?: 'asc' | 'desc' }>({ key: 'data', direction: 'asc' });
   const [regions, setRegions] = useState<string[]>([]);
   const [rawRows, setRawRows] = useState<MatrizItem[]>([]);
   const [statusSapList, setStatusSapList] = useState<string[]>([]);
@@ -180,30 +180,56 @@ export default function Programacao() {
       } as MatrixRow;
     });
 
-      if (sortConfig.key) {
+    if (sortConfig.key) {
+      // Parser de data robusto: aceita dd/mm/yyyy, dd/mm/yy e separadores variados (/, -, .)
       const parseDate = (s: string): number => {
         if (!s) return Number.NaN;
-        const m = s.trim().match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+        const str = String(s).trim();
+        // dd{sep}mm{sep}yyyy ou dd{sep}mm{sep}yy
+        const m = str.match(/^(\d{1,2})[^\d](\d{1,2})[^\d](\d{2,4})$/);
         if (m) {
-          const d = Number(m[1]); const mo = Number(m[2]) - 1; const y = Number(m[3]); return new Date(y, mo, d).getTime();
+          const d = Number(m[1]);
+          const mo = Number(m[2]) - 1;
+          let y = Number(m[3]);
+          if (y < 100) y += 2000; // trata anos de 2 dígitos como 20xx
+          const dt = new Date(y, mo, d);
+          if (!Number.isNaN(dt.getTime())) return dt.getTime();
         }
-        const t = Date.parse(s); return Number.isNaN(t) ? Number.NaN : t;
+        // fallback: tenta Date.parse
+        const t = Date.parse(str);
+        return Number.isNaN(t) ? Number.NaN : t;
       };
-      const compareNumbers = (x: number, y: number) => {
-        if (Number.isNaN(x) && Number.isNaN(y)) return 0;
-        if (Number.isNaN(x)) return 1; if (Number.isNaN(y)) return -1; return x - y;
-      };
+
       tableRows = [...tableRows].sort((a, b) => {
         const key = sortConfig.key! as keyof typeof tableRows[0];
         const dir = sortConfig.direction === 'asc' ? 1 : -1;
-        const aValue = a[key]; const bValue = b[key];
-        // numeric fields
-        if (key === 'valorProgramado' || key === 'valorConcluido' || key === 'valorParcial' || key === 'valorCancelado') return dir * (Number(aValue) - Number(bValue));
-        if (key === 'data') {
-          const da = parseDate(String(aValue)); const db = parseDate(String(bValue)); return dir * compareNumbers(da, db);
+        const aValue = a[key];
+        const bValue = b[key];
+        // Campos numéricos
+        if (key === 'valorProgramado' || key === 'valorConcluido' || key === 'valorParcial' || key === 'valorCancelado') {
+          const an = Number(aValue);
+          const bn = Number(bValue);
+          const cmp = (Number.isNaN(an) ? 1 : Number.isNaN(bn) ? -1 : (an - bn));
+          // NaNs sempre vão para o final, independente da direção
+          if (Number.isNaN(an) && Number.isNaN(bn)) return 0;
+          if (Number.isNaN(an)) return 1;
+          if (Number.isNaN(bn)) return -1;
+          return dir * cmp;
         }
-        const aStr = String(aValue || '').toLowerCase(); const bStr = String(bValue || '').toLowerCase();
-        if (aStr < bStr) return -1 * dir; if (aStr > bStr) return 1 * dir; return 0;
+        // Campo de data: datas inválidas sempre ao final
+        if (key === 'data') {
+          const da = parseDate(String(aValue));
+          const db = parseDate(String(bValue));
+          if (Number.isNaN(da) && Number.isNaN(db)) return 0;
+          if (Number.isNaN(da)) return 1;
+          if (Number.isNaN(db)) return -1;
+          return dir * (da - db);
+        }
+        // Strings: respeita direção sem inverter sinal
+        const aStr = String(aValue || '').toLowerCase();
+        const bStr = String(bValue || '').toLowerCase();
+        if (aStr === bStr) return 0;
+        return dir * (aStr < bStr ? -1 : 1);
       });
     }
 
@@ -424,7 +450,14 @@ export default function Programacao() {
   };
 
   const totalValue = React.useMemo(() => filteredData.matrix.reduce((sum, row) => sum + (row.valorProgramado || 0), 0), [filteredData.matrix]);
-  const totalPep = React.useMemo(() => filteredData.matrix.length, [filteredData.matrix.length]);
+  const totalPep = React.useMemo(() => {
+    const unique = new Set<string>();
+    for (const row of filteredData.matrix) {
+      const pep = String(row.pep || '').trim();
+      if (pep) unique.add(pep);
+    }
+    return unique.size;
+  }, [filteredData.matrix]);
 
   // Formatação de valores curtos (igual PrazosSAP)
   const numberFmt2 = React.useMemo(() => new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }), []);
