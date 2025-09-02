@@ -12,9 +12,10 @@ export function FundoAnimado() {
     if (!mount) {
       return;
     }
-    // Cena e câmera
-    const scene = new THREE.Scene();
-    scene.background = new THREE.Color("#f0f2f5"); // Fundo cinza claro
+  // Cena e câmera
+  const scene = new THREE.Scene();
+  // usar fundo transparente para permitir que o body/bg apareça atrás do canvas
+  scene.background = null;
 
     const camera = new THREE.PerspectiveCamera(
       75,
@@ -28,9 +29,20 @@ export function FundoAnimado() {
     const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
     renderer.setSize(window.innerWidth, window.innerHeight);
     renderer.setPixelRatio(window.devicePixelRatio);
-    mount.appendChild(renderer.domElement);
-    renderer.domElement.setAttribute('aria-label', 'Fundo animado visual');
-    renderer.domElement.setAttribute('role', 'img');
+  // append direto no body para evitar stacking contexts do componente e garantir que a scrollbar apareça na frente
+  document.body.appendChild(renderer.domElement);
+  // Garantir que o canvas fique posicionado e não capture eventos — ficar atrás do conteúdo
+  renderer.domElement.style.position = 'fixed';
+  renderer.domElement.style.top = '0';
+  renderer.domElement.style.left = '0';
+  renderer.domElement.style.width = '100vw';
+  renderer.domElement.style.height = '100vh';
+  renderer.domElement.style.zIndex = '-1';
+  renderer.domElement.style.pointerEvents = 'none';
+  renderer.domElement.setAttribute('aria-label', 'Fundo animado visual');
+  renderer.domElement.setAttribute('role', 'img');
+  // garantir que o clear seja transparente (alpha = 0)
+  renderer.setClearColor(0x000000, 0);
 
     // Textura circular das bolinhas (verde uniforme)
     const circleCanvas = document.createElement("canvas");
@@ -294,16 +306,18 @@ export function FundoAnimado() {
       window.removeEventListener("resize", onResize);
       window.removeEventListener("mousemove", onMouseMove);
       window.removeEventListener("mousemove", updateCameraTarget);
-      if (mount.contains(renderer.domElement)) {
-        mount.removeChild(renderer.domElement);
+      // remover o canvas do body quando desmontar
+      if (renderer.domElement && document.body.contains(renderer.domElement)) {
+        document.body.removeChild(renderer.domElement);
       }
     };
   }, []);
 
-  return (
+    return (
     <div
       ref={mountRef}
-      style={{ width: '100vw', height: '100vh', position: 'fixed', inset: 0, zIndex: 0, pointerEvents: 'none' }}
+      // Mantém o wrapper como fixed mas com zIndex negativo para garantir que scrollbars e conteúdo fiquem acima
+      style={{ width: '100vw', height: '100vh', position: 'fixed', inset: 0, zIndex: -1, pointerEvents: 'none' }}
       aria-hidden="true"
     />
   );
