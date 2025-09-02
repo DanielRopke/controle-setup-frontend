@@ -300,5 +300,11 @@ export function FundoAnimado() {
     };
   }, []);
 
-  return <div ref={mountRef} style={{ width: '100vw', height: '100vh', position: 'fixed', inset: 0, zIndex: -1 }} aria-hidden="true" />;
+  return (
+    <div
+      ref={mountRef}
+      style={{ width: '100vw', height: '100vh', position: 'fixed', inset: 0, zIndex: 0, pointerEvents: 'none' }}
+      aria-hidden="true"
+    />
+  );
 }
