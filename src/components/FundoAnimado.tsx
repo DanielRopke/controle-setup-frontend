@@ -7,11 +7,9 @@ export function FundoAnimado() {
 
   useEffect(() => {
     const mount = mountRef.current;
-    if (!mount) return;
-    // Fallback para acessibilidade
-    if (!mount) {
-      return;
-    }
+    // Não abortar cedo: caso o ref não esteja presente por qualquer razão,
+    // continuamos e criamos o container diretamente no body para garantir que o canvas seja criado.
+    if (!mount) console.warn('FundoAnimado: mountRef não está definido, continuando e usando container no body');
   // Cena e câmera
   const scene = new THREE.Scene();
   // usar fundo transparente para permitir que o body/bg apareça atrás do canvas
@@ -25,24 +23,71 @@ export function FundoAnimado() {
     );
     camera.position.z = 200;
 
-    // Renderizador
-    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
-    renderer.setSize(window.innerWidth, window.innerHeight);
-    renderer.setPixelRatio(window.devicePixelRatio);
-  // append direto no body para evitar stacking contexts do componente e garantir que a scrollbar apareça na frente
-  document.body.appendChild(renderer.domElement);
-  // Garantir que o canvas fique posicionado e não capture eventos — ficar atrás do conteúdo
-  renderer.domElement.style.position = 'fixed';
+    // Renderizador (protegido por try/catch para detectar erros de contexto WebGL)
+    let renderer: THREE.WebGLRenderer;
+    try {
+      renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+      renderer.setSize(window.innerWidth, window.innerHeight);
+      renderer.setPixelRatio(window.devicePixelRatio);
+    } catch (err) {
+      console.error('FundoAnimado: falha ao criar WebGLRenderer', err);
+      return () => {};
+    }
+  // Cria/usa um container fixo no final do body para evitar stacking contexts
+  let container = document.getElementById('fundo-animado-root') as HTMLDivElement | null;
+  let createdContainer = false;
+  if (!container) {
+    container = document.createElement('div');
+    container.id = 'fundo-animado-root';
+    // garante que fique atrás do conteúdo e que a scrollbar do navegador fique à frente
+    container.style.position = 'fixed';
+    container.style.inset = '0';
+    container.style.zIndex = '-1';
+    container.style.pointerEvents = 'none';
+    container.style.overflow = 'hidden';
+    document.body.appendChild(container);
+    createdContainer = true;
+  }
+
+  // Anexa o canvas dentro do container; canvas ocupa 100% do container
+  container.appendChild(renderer.domElement);
+  renderer.domElement.style.position = 'absolute';
   renderer.domElement.style.top = '0';
   renderer.domElement.style.left = '0';
-  renderer.domElement.style.width = '100vw';
-  renderer.domElement.style.height = '100vh';
-  renderer.domElement.style.zIndex = '-1';
+  renderer.domElement.style.width = '100%';
+  renderer.domElement.style.height = '100%';
   renderer.domElement.style.pointerEvents = 'none';
   renderer.domElement.setAttribute('aria-label', 'Fundo animado visual');
   renderer.domElement.setAttribute('role', 'img');
   // garantir que o clear seja transparente (alpha = 0)
   renderer.setClearColor(0x000000, 0);
+
+  console.info('FundoAnimado: canvas criado e anexado ao container', { containerId: container.id, renderer: !!renderer });
+
+  // -- debug badge: exibe um pequeno indicador no canto inferior esquerdo para confirmar montagem
+  try {
+    let badge = document.getElementById('fundo-animado-badge');
+    if (!badge) {
+      badge = document.createElement('div');
+      badge.id = 'fundo-animado-badge';
+      badge.textContent = 'FundoAnimado: ON';
+      badge.style.position = 'fixed';
+      badge.style.left = '8px';
+      badge.style.bottom = '8px';
+      badge.style.zIndex = '60';
+      badge.style.padding = '6px 8px';
+      badge.style.fontSize = '12px';
+      badge.style.fontFamily = 'Inter, system-ui, sans-serif';
+      badge.style.color = '#0f172a';
+      badge.style.background = 'rgba(255,255,255,0.9)';
+      badge.style.borderRadius = '6px';
+      badge.style.boxShadow = '0 2px 8px rgba(0,0,0,0.15)';
+      badge.style.pointerEvents = 'none';
+      document.body.appendChild(badge);
+    }
+  } catch (e) {
+    // não crítico
+  }
 
     // Textura circular das bolinhas (verde uniforme)
     const circleCanvas = document.createElement("canvas");
@@ -306,9 +351,15 @@ export function FundoAnimado() {
       window.removeEventListener("resize", onResize);
       window.removeEventListener("mousemove", onMouseMove);
       window.removeEventListener("mousemove", updateCameraTarget);
-      // remover o canvas do body quando desmontar
-      if (renderer.domElement && document.body.contains(renderer.domElement)) {
-        document.body.removeChild(renderer.domElement);
+      // remover o canvas do container quando desmontar
+      const c = document.getElementById('fundo-animado-root');
+      if (renderer.domElement && c && c.contains(renderer.domElement)) {
+        c.removeChild(renderer.domElement);
+      }
+      // se criamos o container, removê-lo também
+      if (createdContainer) {
+        const c2 = document.getElementById('fundo-animado-root');
+        if (c2 && c2.parentElement) c2.parentElement.removeChild(c2);
       }
     };
   }, []);

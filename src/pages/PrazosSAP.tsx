@@ -464,7 +464,7 @@ export default function PrazosSAP() {
 						</Button>
 						<div className="flex items-center gap-3">
 							<div
-								className="bg-white px-2 rounded-xl font-bold shadow-md text-center flex items-center justify-center overflow-hidden cursor-pointer hover:shadow-lg hover:bg-gray-50"
+								className="flex items-center justify-center px-2 overflow-hidden font-bold text-center bg-white shadow-md cursor-pointer rounded-xl hover:shadow-lg hover:bg-gray-50"
 								onClick={() => navigate('/obras')}
 								title="Ir para Obras"
 								role="button"
