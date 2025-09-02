@@ -2,7 +2,7 @@
 import { useEffect, useRef } from "react";
 import * as THREE from "three";
 
-export function FundoAnimado({ showBadge = true }: { showBadge?: boolean }) {
+export function FundoAnimado({ showBadge = true, zIndex = -1 }: { showBadge?: boolean; zIndex?: number }) {
   const mountRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -42,11 +42,15 @@ export function FundoAnimado({ showBadge = true }: { showBadge?: boolean }) {
     // garante que fique atrás do conteúdo e que a scrollbar do navegador fique à frente
     container.style.position = 'fixed';
     container.style.inset = '0';
-    container.style.zIndex = '-1';
+    container.style.zIndex = String(zIndex);
     container.style.pointerEvents = 'none';
     container.style.overflow = 'hidden';
     document.body.appendChild(container);
     createdContainer = true;
+  }
+  // Se já existe, aplicar zIndex desejado (caso venha de outra página com valor diferente)
+  else {
+    container.style.zIndex = String(zIndex);
   }
 
   // Anexa o canvas dentro do container; canvas ocupa 100% do container
@@ -372,7 +376,7 @@ export function FundoAnimado({ showBadge = true }: { showBadge?: boolean }) {
         if (c2 && c2.parentElement) c2.parentElement.removeChild(c2);
       }
     };
-  }, [showBadge]);
+  }, [showBadge, zIndex]);
 
     return (
     <div

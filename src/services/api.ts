@@ -50,6 +50,21 @@ function buildParams(f: BaseFilters | ExtendedFilters): Record<string,string> {
   return p
 }
 
+// Interceptor: injeta Authorization se houver token no localStorage,
+// mas evita anexar em rotas de autenticação (/token e /token/refresh)
+axios.interceptors.request.use((config) => {
+  const url = (config.url || '').toString()
+  const isAuthEndpoint = /\/token\/?$|\/token\/refresh\/?$/.test(url)
+  if (!isAuthEndpoint) {
+    const token = localStorage.getItem('jwt_access')
+    if (token) {
+      config.headers = config.headers || {}
+      config.headers['Authorization'] = `Bearer ${token}`
+    }
+  }
+  return config
+})
+
 async function get<T>(path: string, params?: Record<string,string>): Promise<T> {
   const res = await axios.get<T>(`${API_BASE}${path}`, { params })
   return res.data
@@ -167,4 +182,21 @@ export function getTiposUnicos() {
 
 export function getMesesConclusao() {
   return axios.get(`${API_BASE}/meses-conclusao/`)
+}
+
+// ================== Auth ==================
+export async function login(username: string, password: string) {
+  // Evita token antigo atrapalhar fluxo de login
+  localStorage.removeItem('jwt_access')
+  localStorage.removeItem('jwt_refresh')
+  const res = await axios.post(`${API_BASE}/token/`, { username, password })
+  const { access, refresh } = res.data as { access: string; refresh: string }
+  localStorage.setItem('jwt_access', access)
+  localStorage.setItem('jwt_refresh', refresh)
+  return res.data
+}
+
+export function logout() {
+  localStorage.removeItem('jwt_access')
+  localStorage.removeItem('jwt_refresh')
 }

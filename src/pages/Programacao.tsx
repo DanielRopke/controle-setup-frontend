@@ -631,7 +631,7 @@ export default function Programacao() {
                   </TableHeader>
                   <TableBody>
                     {filteredData.matrix.map((row, index) => (
-                      <TableRow data-row-index={index} key={index} className={cn("cursor-pointer transition-all duration-200 select-none", (Array.isArray(selectedMatrixRows) && selectedMatrixRows.includes(row.pep)) ? "bg-green-50 border-l-4 border-l-green-600 shadow-md hover:bg-green-100" : "hover:bg-gray-50")} onClick={(e: React.MouseEvent) => {
+                      <TableRow data-row-index={index} key={index} className={cn("cursor-pointer transition-all duration-200 select-none transform-gpu hover:scale-[1.01]", (Array.isArray(selectedMatrixRows) && selectedMatrixRows.includes(row.pep)) ? "bg-green-50 border-l-4 border-l-green-600 shadow-md hover:bg-green-100" : "hover:bg-gray-50 hover:shadow-md")} onClick={(e: React.MouseEvent) => {
                         if (e.shiftKey && typeof lastSelectedIndex === 'number' && lastSelectedIndex !== null) {
                           e.preventDefault(); const start = Math.min(lastSelectedIndex, index); const end = Math.max(lastSelectedIndex, index); const range = filteredData.matrix.slice(start, end + 1).map(r => r.pep);
                           setSelectedMatrixRows(prev => { const preserved = Array.isArray(prev) ? prev.filter(p => { const idx = filteredData.matrix.findIndex(r => r.pep === p); return idx === -1 || idx < start || idx > end; }) : []; return Array.from(new Set([...preserved, ...range])); }); setLastSelectedIndex(index); scrollToRow(index); return;

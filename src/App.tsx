@@ -1,5 +1,5 @@
 // src/App.tsx
-import { BrowserRouter as Router, Routes, Route, Navigate, useNavigate, Outlet } from 'react-router-dom'
+import { BrowserRouter as Router, Routes, Route, Navigate, Outlet } from 'react-router-dom'
 import { Toaster } from 'sonner'
 
 // Import das páginas essenciais para este fluxo
@@ -7,6 +7,8 @@ import PrazosSAP from './pages/PrazosSAP'
 import Obras from './pages/Obras'
 import Programacao from './pages/Programacao'
 import Login from './pages/Login'
+import Cadastro from './pages/Cadastro'
+import RecuperacaoSenha from './pages/RecuperacaoSenha'
 import TestePagina from './pages/TestePagina'
 import TesteBotao from './pages/TesteBotao'
 import PrazosSAPSimples from './pages/PrazosSAPSimples'
@@ -14,15 +16,7 @@ import Home from './pages/Home'
 
 // Componente interno que usa o hook useNavigate
 function AppContent() {
-  // Removemos o estado logado pois não estamos usando no momento
-  // Para desenvolvimento, manteremos acesso direto às rotas sem autenticação
-  
-  const navigate = useNavigate()
-
-  const handleLogin = () => {
-    localStorage.setItem('logado', 'true')
-    navigate('/home')
-  }
+  const isAuth = Boolean(localStorage.getItem('jwt_access'))
 
   // Removido redirecionamento forçado para facilitar desenvolvimento
   /*
@@ -35,14 +29,16 @@ function AppContent() {
 
   return (
     <Routes>
-      <Route path="/login" element={<Login onLogin={handleLogin} />} />
+  <Route path="/login" element={<Login />} />
+  <Route path="/cadastro" element={<Cadastro />} />
+  <Route path="/recuperacao-senha" element={<RecuperacaoSenha />} />
 
       {/* RequireAuth protege as rotas abaixo e redireciona ao /login quando não autenticado */}
       <Route
         element={(
           function RequireAuth() {
-            const logado = localStorage.getItem('logado') === 'true'
-            return logado ? <Outlet /> : <Navigate to="/login" replace />
+            const hasToken = Boolean(localStorage.getItem('jwt_access'))
+            return hasToken ? <Outlet /> : <Navigate to="/login" replace />
           }
         )()}
       >
@@ -61,7 +57,7 @@ function AppContent() {
       </Route>
 
       {/* raiz pública aponta para login */}
-      <Route path="/" element={<Navigate to="/login" replace />} />
+  <Route path="/" element={<Navigate to={isAuth ? '/home' : '/login'} replace />} />
       <Route path="*" element={<Navigate to="/login" replace />} />
     </Routes>
   )
