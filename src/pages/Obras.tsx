@@ -112,7 +112,7 @@ function Obras() {
 
   return (
     <div className="relative h-screen overflow-hidden text-white bg-transparent">
-      <FundoAnimado />
+      <FundoAnimado showBadge={false} />
 
       {/* Header fixo, estilo PrazosSAP */}
   <header className="fixed top-0 left-0 right-0 z-50 border-b border-green-500 shadow-md bg-gradient-to-r from-green-600 via-green-600/90 to-green-700">
