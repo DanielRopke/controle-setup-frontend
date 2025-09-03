@@ -27,6 +27,14 @@ export interface DashboardAggregated {
   matrix: { pep: string; prazo: string; dataConclusao: string; status: string; rs: number }[]
 }
 export interface BaseFilters { seccional?: string; statusSap?: string; tipo?: string; mes?: string; dataInicio?: string; dataFim?: string }
+// Tipos de auth/cadastro
+export interface RegisterPayload {
+  username: string
+  email: string
+  matricula: string
+  password: string
+}
+
 // Filtros adicionais (a API atual pode não suportar — usados para lógica local de cross-filter)
 export interface ExtendedFilters extends BaseFilters { statusEner?: string; statusConc?: string; motivo?: string }
 
@@ -80,7 +88,16 @@ export const api = {
   getGraficoConc: () => get<Record<string, Record<string, number>>>('/status-conc-pep/'),
   getGraficoServico: (filters?: BaseFilters) => get<Record<string, Record<string, number>>>('/status-servico-contagem/', filters ? buildParams(filters) : undefined),
   getGraficoSeccionalRS: (filters?: BaseFilters) => get<Record<string, { valor: number; pep_count: number }>>('/seccional-rs-pep/', filters ? buildParams(filters) : undefined),
-  getMatrizDados: (filters?: BaseFilters) => get<MatrixRowApi[]>('/matriz-dados/', filters ? buildParams(filters) : undefined)
+  getMatrizDados: (filters?: BaseFilters) => get<MatrixRowApi[]>('/matriz-dados/', filters ? buildParams(filters) : undefined),
+  // Auth
+  register: async (payload: RegisterPayload) => {
+    const res = await axios.post(`${API_BASE}/auth/register`, payload)
+    return res.data as { message: string }
+  },
+  verifyEmail: async (uid: string, token: string) => {
+    const res = await axios.post(`${API_BASE}/auth/verify-email`, { uid, token })
+    return res.data as { message: string }
+  }
 }
 
 // ------------------ Agregação para Dashboard ------------------
