@@ -66,6 +66,11 @@ export default function Cadastro() {
     })()
   }, [location.search, navigate])
 
+  // Define o título da página
+  useEffect(() => {
+    document.title = 'Novo Cadastro'
+  }, [])
+
   // Carrega timestamp do primeiro envio para o e-mail atual (se existir)
   useEffect(() => {
     const key = email ? `register_firstSentAt:${email.trim().toLowerCase()}` : ''
@@ -81,7 +86,7 @@ export default function Cadastro() {
       setFirstSentAt(null)
       setRemainingSeconds(0)
     }
-  }, [email])
+  }, [email, COOLDOWN_MS])
 
   // Atualiza contador a cada 1s quando em cooldown
   useEffect(() => {
@@ -95,7 +100,7 @@ export default function Cadastro() {
       }
     }, 1000)
     return () => window.clearInterval(id)
-  }, [firstSentAt])
+  }, [firstSentAt, COOLDOWN_MS])
 
   const emailTrim = email.trim()
   const emailOk = useMemo(() => /@[gG][rR][uU][pP][oO][sS][eE][tT][uU][pP]\.com$/i.test(emailTrim), [emailTrim])
@@ -334,10 +339,12 @@ export default function Cadastro() {
           <button
             type="submit"
             disabled={!formValid}
-            className={`w-full py-2 rounded flex items-center justify-between px-3 ${formValid ? 'bg-emerald-600 text-white' : 'bg-gray-300 text-gray-500 cursor-not-allowed'}`}
+            className={`relative w-full py-2 rounded px-3 ${formValid ? 'bg-emerald-600 text-white' : 'bg-gray-300 text-gray-500 cursor-not-allowed'}`}
           >
-            <span>{firstSentAt ? 'Reenviar Email' : 'Cadastrar'}</span>
-            <span className="text-white/90 tabular-nums">{remainingSeconds > 0 ? formatMMSS(remainingSeconds) : ''}</span>
+            <span className="absolute right-3 top-1/2 -translate-y-1/2 tabular-nums ${formValid ? 'text-white/90' : 'text-gray-600'}">
+              {remainingSeconds > 0 ? formatMMSS(remainingSeconds) : ''}
+            </span>
+            <span className="block w-full text-center">{firstSentAt ? 'Reenviar Email' : 'Cadastrar'}</span>
           </button>
         </form>
         <Link to="/login" className="block mt-2 text-sm text-center text-emerald-700 hover:underline">Voltar ao Login</Link>
