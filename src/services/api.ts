@@ -34,6 +34,11 @@ export interface RegisterPayload {
   matricula: string
   password: string
 }
+export interface RegisterResponse {
+  message: string
+  verify_url?: string
+  sent?: boolean
+}
 
 // Filtros adicionais (a API atual pode não suportar — usados para lógica local de cross-filter)
 export interface ExtendedFilters extends BaseFilters { statusEner?: string; statusConc?: string; motivo?: string }
@@ -62,13 +67,17 @@ function buildParams(f: BaseFilters | ExtendedFilters): Record<string,string> {
 // mas evita anexar em rotas de autenticação (/token e /token/refresh)
 axios.interceptors.request.use((config) => {
   const url = (config.url || '').toString()
-  const isAuthEndpoint = /\/token\/?$|\/token\/refresh\/?$/.test(url)
-  if (!isAuthEndpoint) {
+  // Não anexar Authorization para endpoints públicos de auth
+  const isPublicAuth = /\/token\/?$|\/token\/refresh\/?$|\/auth\/(register|verify-email)\/?$/.test(url)
+  if (!isPublicAuth) {
     const token = localStorage.getItem('jwt_access')
     if (token) {
       config.headers = config.headers || {}
       config.headers['Authorization'] = `Bearer ${token}`
     }
+  } else if (config.headers && 'Authorization' in config.headers) {
+    // Garantir que não vai nenhum header Authorization por engano
+    delete (config.headers as Record<string, unknown>)['Authorization']
   }
   return config
 })
@@ -92,7 +101,7 @@ export const api = {
   // Auth
   register: async (payload: RegisterPayload) => {
     const res = await axios.post(`${API_BASE}/auth/register`, payload)
-    return res.data as { message: string }
+    return res.data as RegisterResponse
   },
   verifyEmail: async (uid: string, token: string) => {
     const res = await axios.post(`${API_BASE}/auth/verify-email`, { uid, token })
