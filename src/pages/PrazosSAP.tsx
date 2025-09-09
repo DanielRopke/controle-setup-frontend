@@ -961,14 +961,14 @@ export default function PrazosSAP() {
 								<CardContent className="p-4">
 									<ChartContainer config={{ value: { label: "Valor (R$)", color: "hsl(var(--primary))" } }} className="h-64 sm:h-72 md:h-80 lg:h-[calc((100vh-20rem)/2)] lg:max-h-[350px] w-full">
 										<ResponsiveContainer width="100%" height="100%">
-											<BarChart data={filteredData.reasons} margin={{ top: 20, right: 15, bottom: 70, left: 15 }}>
+											<BarChart data={filteredData.reasons} margin={{ top: 20, right: 15, bottom: 50, left: 15 }}>
 												<CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
 												<XAxis dataKey="name" fontSize={12} tickMargin={8} interval={0} minTickGap={0} tick={(props: unknown) => {
 													const p = props as ChartTickProps;
 													const value = p && p.payload ? p.payload.value : '';
 													return (
 														<g transform={`translate(${p.x},${p.y})`} style={{ cursor: 'pointer' }} onClick={() => handleChartClick('reasons', String(value))}>
-															<text x={0} y={0} dy={20} dx={-4} textAnchor="end" fontSize={12} fill="currentColor" transform="rotate(-12)">{String(value)}</text>
+															<text x={0} y={0} dy={16} textAnchor="middle" fontSize={12} fill="currentColor">{String(value)}</text>
 														</g>
 													);
 												}} />
