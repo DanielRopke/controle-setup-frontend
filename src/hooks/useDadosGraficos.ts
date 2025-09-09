@@ -62,10 +62,26 @@ export function useDadosGraficos(filtros: {
     api.getMatrizDados(params).then(setMatriz).catch(() => setMatriz([]));
   }, [filtros]);
 
+  function cleanLabel(value: unknown): string {
+    const s = String(value ?? '')
+      .replace(/\r?\n/g, ' ')           // remove quebras de linha
+      .replace(/[\u200B-\u200D\uFEFF]/g, '') // remove espaços de largura zero
+      .replace(/\s+/g, ' ')              // colapsa múltiplos espaços
+      .trim();
+    return s;
+  }
+
   function flattenGrafico(data: Record<string, Record<string, number>>): GraficoItem[] {
-    return Object.entries(data).flatMap(([status, obj]) =>
-      Object.entries(obj).map(([seccional, count]) => ({ status, seccional, count: Number(count) || 0 }))
-    );
+    return Object.entries(data)
+      .flatMap(([status, obj]) => {
+        const sClean = cleanLabel(status)
+        return Object.entries(obj).map(([seccional, count]) => ({
+          status: sClean,
+          seccional: cleanLabel(seccional),
+          count: Number(count) || 0
+        }))
+      })
+      .filter(item => !!item.status); // evita barras com rótulo vazio
   }
   // Suporta tanto o formato antigo quanto o novo (agrupado por seccional)
   function flattenSeccionalRS(data: Record<string, { valor: number; pep_count: number; mes?: string; tipo?: string; statusSap?: string }>): SeccionalData[] {
