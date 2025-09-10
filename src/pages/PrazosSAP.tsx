@@ -479,10 +479,9 @@ export default function PrazosSAP() {
 		// NÃO enviar seccional aqui: manter todas as regiões para o gráfico comparativo
 		const di = fmt(selectedStartDate);
 		const df = fmt(selectedEndDate);
-		if (di && df) {
-			params.data_inicio = di;
-			params.data_fim = df;
-		}
+		// Enviar data_inicio e/ou data_fim individualmente para suportar filtro "apenas início" ou "apenas fim"
+		if (di) params.data_inicio = di;
+		if (df) params.data_fim = df;
 		if (selectedStatusSap) params.status_sap = selectedStatusSap;
 		if (selectedTipo) params.tipo = selectedTipo;
 		if (selectedMes) params.mes = selectedMes;
@@ -515,10 +514,9 @@ export default function PrazosSAP() {
 		if (selectedRegion !== 'all') params.seccional = selectedRegion;
 		const di = fmt(selectedStartDate);
 		const df = fmt(selectedEndDate);
-		if (di && df) {
-			params.data_inicio = di;
-			params.data_fim = df;
-		}
+		// Enviar data_inicio e/ou data_fim individualmente para suportar filtro "apenas início" ou "apenas fim"
+		if (di) params.data_inicio = di;
+		if (df) params.data_fim = df;
 		if (selectedStatusSap) params.status_sap = selectedStatusSap;
 		if (selectedTipo) params.tipo = selectedTipo;
 		if (selectedMes) params.mes = selectedMes;
