@@ -61,13 +61,13 @@ export default function Programacao() {
   // Proporções das colunas em % do espaço disponível
   type ColumnKey = 'data' | 'pep' | 'valorProgramado' | 'statusProg' | 'motivoNaoCumprimento' | 'motivoPrioridade' | 'hash';
   const colPercents: Record<ColumnKey, number> = {
-  data: 6,
-  pep: 22,
-  valorProgramado: 20,
-  statusProg: 12,
-  motivoNaoCumprimento: 30,
-  motivoPrioridade: 10,
-  hash: 5,
+  data: 8,
+  pep: 36,
+  valorProgramado: 12,
+  statusProg: 8,
+  motivoNaoCumprimento: 26,
+  motivoPrioridade: 6,
+  hash: 4,
   };
   const getPercent = (key: ColumnKey) => colPercents[key];
 
@@ -671,12 +671,12 @@ export default function Programacao() {
                           const style = { width: `${getPercent(col.key)}%`, minWidth: 0 } as React.CSSProperties;
                           let content: React.ReactNode = null;
                           let className = 'overflow-hidden text-sm truncate whitespace-nowrap text-ellipsis';
-                          if (col.key === 'data') { content = row.data; className = 'font-mono text-sm truncate'; }
-                          else if (col.key === 'pep') { content = row.pep; className = 'font-mono text-sm truncate'; }
-                          else if (col.key === 'valorProgramado') { content = row.valorProgramado.toLocaleString('pt-BR'); className = 'text-sm text-right truncate'; }
+                          if (col.key === 'data') { content = row.data; className = 'font-mono text-sm whitespace-nowrap overflow-hidden text-ellipsis'; }
+                          else if (col.key === 'pep') { content = row.pep; className = 'font-mono text-sm whitespace-nowrap overflow-hidden text-ellipsis'; }
+                          else if (col.key === 'valorProgramado') { content = row.valorProgramado.toLocaleString('pt-BR'); className = 'text-sm text-right whitespace-nowrap overflow-hidden text-ellipsis'; }
                           
                           else if (col.key === 'statusProg') { content = (<span className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusBadgeClass(row.statusProg)}`}>{row.statusProg}</span>); className = 'truncate'; }
-                          else if (col.key === 'motivoNaoCumprimento') { content = row.motivoNaoCumprimento; className = 'overflow-hidden text-sm truncate whitespace-nowrap text-ellipsis'; }
+                          else if (col.key === 'motivoNaoCumprimento') { content = row.motivoNaoCumprimento; className = 'overflow-hidden text-sm truncate'; style.whiteSpace = 'normal'; }
                           else if (col.key === 'motivoPrioridade') { content = row.motivoPrioridade; className = 'overflow-hidden text-sm truncate whitespace-nowrap text-ellipsis'; }
                           else if (col.key === 'hash') { content = getHashEmoji(row as unknown as Record<string, unknown>); className = 'text-center'; }
                           return (
