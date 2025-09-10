@@ -603,7 +603,7 @@ export default function Programacao() {
               </div>
             </CardHeader>
             <CardContent className="p-0">
-              <div className="overflow-x-auto" ref={tableWrapperRef}>
+              <div className="overflow-x-hidden" ref={tableWrapperRef}>
                 <Table style={{ tableLayout: 'fixed' }}>
                   {/* Define larguras pelo colgroup para garantir aplicação consistente */}
                   <colgroup>
@@ -668,19 +668,30 @@ export default function Programacao() {
                           { key: 'motivoPrioridade' as ColumnKey },
                           { key: 'hash' as ColumnKey },
                         ]).map(col => {
-                          const style = { width: `${getPercent(col.key)}%`, minWidth: 0 } as React.CSSProperties;
+                          const baseStyle: React.CSSProperties = { width: `${getPercent(col.key)}%`, minWidth: 0 };
                           let content: React.ReactNode = null;
                           let className = 'overflow-hidden text-sm truncate whitespace-nowrap text-ellipsis';
+                          const cellStyle = { ...baseStyle } as React.CSSProperties;
                           if (col.key === 'data') { content = row.data; className = 'font-mono text-sm whitespace-nowrap overflow-hidden text-ellipsis'; }
-                          else if (col.key === 'pep') { content = row.pep; className = 'font-mono text-sm whitespace-nowrap overflow-hidden text-ellipsis'; }
+                          else if (col.key === 'pep') { content = row.pep; className = 'font-mono text-sm'; cellStyle.overflowWrap = 'break-word'; cellStyle.wordBreak = 'break-all'; }
                           else if (col.key === 'valorProgramado') { content = row.valorProgramado.toLocaleString('pt-BR'); className = 'text-sm text-right whitespace-nowrap overflow-hidden text-ellipsis'; }
-                          
                           else if (col.key === 'statusProg') { content = (<span className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusBadgeClass(row.statusProg)}`}>{row.statusProg}</span>); className = 'truncate'; }
-                          else if (col.key === 'motivoNaoCumprimento') { content = row.motivoNaoCumprimento; className = 'overflow-hidden text-sm truncate'; style.whiteSpace = 'normal'; }
+                          else if (col.key === 'motivoNaoCumprimento') {
+                            content = row.motivoNaoCumprimento;
+                            className = 'text-sm overflow-hidden';
+                            // apply multi-line clamp styles safely
+                            cellStyle.whiteSpace = 'normal';
+                            const webkit: Record<string, string | number> = {};
+                            webkit.WebkitLineClamp = 2;
+                            webkit.WebkitBoxOrient = 'vertical';
+                            webkit.display = '-webkit-box';
+                            Object.assign(cellStyle, webkit);
+                            cellStyle.overflow = 'hidden';
+                          }
                           else if (col.key === 'motivoPrioridade') { content = row.motivoPrioridade; className = 'overflow-hidden text-sm truncate whitespace-nowrap text-ellipsis'; }
                           else if (col.key === 'hash') { content = getHashEmoji(row as unknown as Record<string, unknown>); className = 'text-center'; }
                           return (
-                            <TableCell key={col.key} className={className} style={style}>
+                            <TableCell key={col.key} className={className} style={cellStyle}>
                               {content}
                             </TableCell>
                           );
