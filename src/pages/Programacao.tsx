@@ -46,9 +46,6 @@ export default function Programacao() {
     data: string;
     pep: string; // PEP/ORDEM
     valorProgramado: number;
-    valorConcluido: number;
-    valorParcial: number;
-    valorCancelado: number;
     statusProg: string;
     motivoNaoCumprimento: string;
     motivoPrioridade: string;
@@ -62,18 +59,15 @@ export default function Programacao() {
   const [mesesList, setMesesList] = useState<string[]>([]);
 
   // Proporções das colunas em % do espaço disponível
-  type ColumnKey = 'data' | 'pep' | 'valorProgramado' | 'valorConcluido' | 'valorParcial' | 'valorCancelado' | 'statusProg' | 'motivoNaoCumprimento' | 'motivoPrioridade' | 'hash';
+  type ColumnKey = 'data' | 'pep' | 'valorProgramado' | 'statusProg' | 'motivoNaoCumprimento' | 'motivoPrioridade' | 'hash';
   const colPercents: Record<ColumnKey, number> = {
-  data: 8,
-  pep: 17, // reduzido em 42% (28% -> 16.24%)
-  valorProgramado: 9.5,
-  valorConcluido: 8.5,
-  valorParcial: 6.5,
-  valorCancelado: 8.5,
-  statusProg: 10.8,
-  motivoNaoCumprimento: 18, // recebeu o excedente para manter 100% total
-  motivoPrioridade: 8.5,
-  hash: 3.5,
+  data: 6,
+  pep: 22,
+  valorProgramado: 20,
+  statusProg: 12,
+  motivoNaoCumprimento: 30,
+  motivoPrioridade: 10,
+  hash: 5,
   };
   const getPercent = (key: ColumnKey) => colPercents[key];
 
@@ -106,7 +100,7 @@ export default function Programacao() {
       return;
     }
     // primeira vez: numéricos e datas começam em 'desc' (maior → menor / mais novo → mais antigo)
-    const numericKeys: (keyof MatrixRow)[] = ['valorProgramado', 'valorConcluido', 'valorParcial', 'valorCancelado'];
+    const numericKeys: (keyof MatrixRow)[] = ['valorProgramado'];
     if (numericKeys.includes(key) || key === 'data') {
       setSortConfig({ key, direction: 'desc' });
     } else {
@@ -170,9 +164,6 @@ export default function Programacao() {
         data: String(rowObj['DATA'] ?? rowObj['Data'] ?? ''),
         pep: String(rowObj['PEP/ORDEM'] ?? rowObj['PEP'] ?? rowObj['pep'] ?? ''),
         valorProgramado: parseMoney(rowObj['Valor programado'] ?? rowObj['Valor Programado'] ?? rowObj['valorProgramado'] ?? rowObj['valor'] ?? 0),
-        valorConcluido: parseMoney(rowObj['Valor concluído'] ?? rowObj['Valor Concluído'] ?? rowObj['valorConcluido'] ?? 0),
-        valorParcial: parseMoney(rowObj['Valor parcial'] ?? rowObj['Valor Parcial'] ?? rowObj['valorParcial'] ?? 0),
-        valorCancelado: parseMoney(rowObj['Valor cancelado'] ?? rowObj['Valor Cancelado'] ?? rowObj['valorCancelado'] ?? 0),
         statusProg: String(rowObj['STATUS RETORNO PROG 2'] ?? rowObj['STATUS RETORNO PROG'] ?? rowObj['statusSap'] ?? ''),
         motivoNaoCumprimento: String(rowObj['MOTIVO NÃO CUMPRIMENTO DA PROG'] ?? rowObj['Motivo Não Cumprimento'] ?? ''),
         motivoPrioridade: String(rowObj['Motivo Prioridade'] ?? rowObj['motivoPrioridade'] ?? ''),
@@ -236,7 +227,7 @@ export default function Programacao() {
         const aValue = a[key];
         const bValue = b[key];
         // Campos numéricos
-        if (key === 'valorProgramado' || key === 'valorConcluido' || key === 'valorParcial' || key === 'valorCancelado') {
+          if (key === 'valorProgramado') {
           const an = Number(aValue);
           const bn = Number(bValue);
           const cmp = (Number.isNaN(an) ? 1 : Number.isNaN(bn) ? -1 : (an - bn));
@@ -458,7 +449,7 @@ export default function Programacao() {
 
   // Exportar Excel
   const handleExportExcel = () => {
-  const worksheet = XLSX.utils.json_to_sheet(filteredData.matrix.map(row => ({ 'Data': row.data, 'Serviço': row.pep, 'Programado': row.valorProgramado, 'Concluido': row.valorConcluido, 'Parcial': row.valorParcial, 'Cancelado': row.valorCancelado, 'Status': row.statusProg, 'Motivo': row.motivoNaoCumprimento, 'Prioridade': row.motivoPrioridade, '#': getHashEmoji(row) })));
+  const worksheet = XLSX.utils.json_to_sheet(filteredData.matrix.map(row => ({ 'Data': row.data, 'Serviço': row.pep, 'Valor': row.valorProgramado, 'Status': row.statusProg, 'Motivo': row.motivoNaoCumprimento, 'Prioridade': row.motivoPrioridade, '#': getHashEmoji(row) })));
     const workbook = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(workbook, worksheet, 'Programacao'); XLSX.writeFile(workbook, 'programacao.xlsx'); showToast('Arquivo Excel exportado com sucesso!');
   };
 
@@ -619,9 +610,6 @@ export default function Programacao() {
                     <col style={{ width: `${getPercent('data')}%` }} />
                     <col style={{ width: `${getPercent('pep')}%` }} />
                     <col style={{ width: `${getPercent('valorProgramado')}%` }} />
-                    <col style={{ width: `${getPercent('valorConcluido')}%` }} />
-                    <col style={{ width: `${getPercent('valorParcial')}%` }} />
-                    <col style={{ width: `${getPercent('valorCancelado')}%` }} />
                     <col style={{ width: `${getPercent('statusProg')}%` }} />
                     <col style={{ width: `${getPercent('motivoNaoCumprimento')}%` }} />
                     <col style={{ width: `${getPercent('motivoPrioridade')}%` }} />
@@ -629,13 +617,10 @@ export default function Programacao() {
                   </colgroup>
                   <TableHeader>
                     <TableRow className="bg-gray-50 hover:bg-gray-100">
-                      {([
+                        {([
                         { key: 'data', label: 'Data', sortable: true },
                         { key: 'pep', label: 'Serviços', sortable: true },
-                        { key: 'valorProgramado', label: 'Programado', sortable: true },
-                        { key: 'valorConcluido', label: 'Concluido', sortable: true },
-                        { key: 'valorParcial', label: 'Parcial', sortable: true },
-                        { key: 'valorCancelado', label: 'Cancelado', sortable: true },
+                        { key: 'valorProgramado', label: 'Valor', sortable: true },
                         { key: 'statusProg', label: 'Status', sortable: true },
                         { key: 'motivoNaoCumprimento', label: 'Motivo', sortable: true },
                         { key: 'motivoPrioridade', label: 'Prioridade', sortable: true },
@@ -678,9 +663,6 @@ export default function Programacao() {
                           { key: 'data' as ColumnKey },
                           { key: 'pep' as ColumnKey },
                           { key: 'valorProgramado' as ColumnKey },
-                          { key: 'valorConcluido' as ColumnKey },
-                          { key: 'valorParcial' as ColumnKey },
-                          { key: 'valorCancelado' as ColumnKey },
                           { key: 'statusProg' as ColumnKey },
                           { key: 'motivoNaoCumprimento' as ColumnKey },
                           { key: 'motivoPrioridade' as ColumnKey },
@@ -692,9 +674,7 @@ export default function Programacao() {
                           if (col.key === 'data') { content = row.data; className = 'font-mono text-sm truncate'; }
                           else if (col.key === 'pep') { content = row.pep; className = 'font-mono text-sm truncate'; }
                           else if (col.key === 'valorProgramado') { content = row.valorProgramado.toLocaleString('pt-BR'); className = 'text-sm text-right truncate'; }
-                          else if (col.key === 'valorConcluido') { content = row.valorConcluido.toLocaleString('pt-BR'); className = 'text-sm text-right truncate'; }
-                          else if (col.key === 'valorParcial') { content = row.valorParcial.toLocaleString('pt-BR'); className = 'text-sm text-right truncate'; }
-                          else if (col.key === 'valorCancelado') { content = row.valorCancelado.toLocaleString('pt-BR'); className = 'text-sm text-right truncate'; }
+                          
                           else if (col.key === 'statusProg') { content = (<span className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusBadgeClass(row.statusProg)}`}>{row.statusProg}</span>); className = 'truncate'; }
                           else if (col.key === 'motivoNaoCumprimento') { content = row.motivoNaoCumprimento; className = 'overflow-hidden text-sm truncate whitespace-nowrap text-ellipsis'; }
                           else if (col.key === 'motivoPrioridade') { content = row.motivoPrioridade; className = 'overflow-hidden text-sm truncate whitespace-nowrap text-ellipsis'; }

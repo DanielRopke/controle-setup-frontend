@@ -723,7 +723,7 @@ export default function PrazosSAP() {
 					</div>
 				</aside>
 
-				<main className="flex-1 w-full px-2 sm:px-4 lg:px-6 pt-0 pb-2 sm:pb-4 lg:pb-6 lg:ml-64">
+				<main className="flex-1 w-full px-2 pt-0 pb-2 sm:px-4 lg:px-6 sm:pb-4 lg:pb-6 lg:ml-64">
 					<div className="lg:h-[calc(100vh-8rem)] lg:min-h-[500px] lg:max-h-[calc(100vh-8rem)] mb-8">
 						<div className="grid grid-cols-1 gap-3 lg:grid-cols-2 lg:gap-3 lg:h-full lg:grid-rows-2">
 								<Card className="shadow-card hover:shadow-card-hover bg-white border-gray-200 transform transition-all duration-300 hover:scale-[1.02] overflow-hidden" ref={statusENERRef} tabIndex={0}>
