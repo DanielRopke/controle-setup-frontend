@@ -62,11 +62,11 @@ export default function Programacao() {
   type ColumnKey = 'data' | 'pep' | 'valorProgramado' | 'statusProg' | 'motivoNaoCumprimento' | 'motivoPrioridade' | 'hash';
   const colPercents: Record<ColumnKey, number> = {
   data: 8,
-  pep: 36,
-  valorProgramado: 12,
-  statusProg: 8,
-  motivoNaoCumprimento: 26,
-  motivoPrioridade: 6,
+  pep: 16.2,
+  valorProgramado: 8,
+  statusProg: 12,
+  motivoNaoCumprimento: 43.4,
+  motivoPrioridade: 8.4,
   hash: 4,
   };
   const getPercent = (key: ColumnKey) => colPercents[key];
