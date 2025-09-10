@@ -264,7 +264,7 @@ export default function Programacao() {
     }
 
   return { matrix: tableRows } as { matrix: MatrixRow[] };
-  }, [rawRows, selectedRegion, activeFilters, pepSearch, sortConfig, selectedStatusSap, selectedTipo, selectedMes]);
+  }, [rawRows, selectedRegion, activeFilters, pepSearch, sortConfig, selectedStatusSap, selectedTipo, selectedMes, selectedStartDate, selectedEndDate]);
 
   // Handler de teclado para seleção/rolagem, reaproveitado da outra página
   useEffect(() => {
