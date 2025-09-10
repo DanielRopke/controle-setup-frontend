@@ -180,6 +180,36 @@ export default function Programacao() {
       } as MatrixRow;
     });
 
+    // Filtro de data (inclusivo) — mesma implementação de Faturamento
+    if (selectedStartDate || selectedEndDate) {
+      const start = selectedStartDate ? new Date(selectedStartDate) : undefined;
+      const end = selectedEndDate ? new Date(selectedEndDate) : undefined;
+      if (start) start.setHours(0, 0, 0, 0);
+      if (end) end.setHours(23, 59, 59, 999);
+      tableRows = tableRows.filter(r => {
+        const label = String(r.data || '').trim();
+        const t = (() => {
+          if (!label) return Number.NaN;
+          const m = label.match(/^(\d{1,2})[^\d](\d{1,2})[^\d](\d{2,4})$/);
+          if (m) {
+            const d = Number(m[1]);
+            const mo = Number(m[2]) - 1;
+            let y = Number(m[3]);
+            if (y < 100) y += 2000;
+            const dt = new Date(y, mo, d);
+            return dt.getTime();
+          }
+          const ts = Date.parse(label);
+          return Number.isNaN(ts) ? Number.NaN : ts;
+        })();
+        if (Number.isNaN(t)) return false;
+        if (start && t < start.getTime()) return false;
+        if (end && t > end.getTime()) return false;
+        return true;
+      });
+    }
+
+    // Ordenação
     if (sortConfig.key) {
       // Parser de data robusto: aceita dd/mm/yyyy, dd/mm/yy e separadores variados (/, -, .)
       const parseDate = (s: string): number => {
