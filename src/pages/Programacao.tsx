@@ -680,7 +680,7 @@ export default function Programacao() {
                             content = row.motivoNaoCumprimento;
                             // truncar em uma única linha com reticências e garantir altura uniforme
                             content = row.motivoNaoCumprimento;
-                            className = 'text-sm overflow-hidden whitespace-nowrap text-ellipsis';
+                            className = 'overflow-hidden text-sm whitespace-nowrap text-ellipsis';
                             cellStyle.whiteSpace = 'nowrap';
                             cellStyle.textOverflow = 'ellipsis';
                             cellStyle.overflow = 'hidden';
