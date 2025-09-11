@@ -65,8 +65,8 @@ export default function Programacao() {
   pep: 18.63,
   valorProgramado: 8,
   statusProg: 12,
-  motivoNaoCumprimento: 40.97,
-  motivoPrioridade: 8.4,
+  motivoNaoCumprimento: 38.45,
+  motivoPrioridade: 10.92,
   hash: 4,
   };
   const getPercent = (key: ColumnKey) => colPercents[key];
@@ -672,21 +672,21 @@ export default function Programacao() {
                           let content: React.ReactNode = null;
                           let className = 'overflow-hidden text-sm truncate whitespace-nowrap text-ellipsis';
                           const cellStyle = { ...baseStyle } as React.CSSProperties;
-                          if (col.key === 'data') { content = row.data; className = 'font-mono text-sm whitespace-nowrap overflow-hidden text-ellipsis'; }
+                          if (col.key === 'data') { content = row.data; className = 'overflow-hidden font-mono text-sm whitespace-nowrap text-ellipsis'; }
                           else if (col.key === 'pep') { content = row.pep; className = 'font-mono text-sm'; cellStyle.overflowWrap = 'break-word'; cellStyle.wordBreak = 'break-all'; }
-                          else if (col.key === 'valorProgramado') { content = row.valorProgramado.toLocaleString('pt-BR'); className = 'text-sm text-right whitespace-nowrap overflow-hidden text-ellipsis'; }
+                          else if (col.key === 'valorProgramado') { content = row.valorProgramado.toLocaleString('pt-BR'); className = 'overflow-hidden text-sm text-right whitespace-nowrap text-ellipsis'; }
                           else if (col.key === 'statusProg') { content = (<span className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusBadgeClass(row.statusProg)}`}>{row.statusProg}</span>); className = 'truncate'; }
                           else if (col.key === 'motivoNaoCumprimento') {
                             content = row.motivoNaoCumprimento;
-                            className = 'text-sm overflow-hidden';
-                            // apply multi-line clamp styles safely
-                            cellStyle.whiteSpace = 'normal';
-                            const webkit: Record<string, string | number> = {};
-                            webkit.WebkitLineClamp = 2;
-                            webkit.WebkitBoxOrient = 'vertical';
-                            webkit.display = '-webkit-box';
-                            Object.assign(cellStyle, webkit);
+                            // truncar em uma única linha com reticências e garantir altura uniforme
+                            content = row.motivoNaoCumprimento;
+                            className = 'text-sm overflow-hidden whitespace-nowrap text-ellipsis';
+                            cellStyle.whiteSpace = 'nowrap';
+                            cellStyle.textOverflow = 'ellipsis';
                             cellStyle.overflow = 'hidden';
+                            // limitar a altura da célula para manter linhas da matriz com altura uniforme
+                            cellStyle.maxHeight = '2.25rem';
+                            cellStyle.lineHeight = '1.5rem';
                           }
                           else if (col.key === 'motivoPrioridade') { content = row.motivoPrioridade; className = 'overflow-hidden text-sm truncate whitespace-nowrap text-ellipsis'; }
                           else if (col.key === 'hash') { content = getHashEmoji(row as unknown as Record<string, unknown>); className = 'text-center'; }
