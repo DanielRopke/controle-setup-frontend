@@ -195,9 +195,10 @@ export default function Cadastro() {
         // Mensagens padronizadas conforme backend
         const backendMsg = resp?.message || ''
         if (backendMsg) {
-          // Se for mensagem de cooldown, exibir como erro de email (vermelho) ao invés de toast de sucesso
+          // Se backend sinaliza cooldown, exibir como erro (vermelho) e marcar emailError
           if (backendMsg === 'Aguarde o tempo para Reenvio de Email') {
             setEmailError(backendMsg)
+            toast.error(backendMsg)
           } else {
             toast.success(backendMsg)
           }
