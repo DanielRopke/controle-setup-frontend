@@ -91,7 +91,7 @@ function Obras() {
   }
 
   const menuItems: MenuItem[] = [
-    { label: 'Prazos SAP', to: '/prazos-sap', img: prazosapImg, desc: 'Gestão e monitoramento de prazos do sistema SAP' },
+    { label: 'Prazos SAP', to: '/carteira-obras', img: prazosapImg, desc: 'Gestão e monitoramento de prazos do sistema SAP' },
   { label: 'Programação', to: '/programacao', img: programacaoImg, desc: 'Planejamento e programação de atividades' },
   { label: 'Faturamento', to: '/faturamento', img: faturamentoImg, desc: 'Previsão e controle de faturamento' },
     { label: 'Pareto Obras', to: '/pareto-obras', img: paretoImg, desc: 'Análise de Pareto para obras', soon: true },
