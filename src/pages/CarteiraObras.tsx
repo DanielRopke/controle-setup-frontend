@@ -205,9 +205,16 @@ export default function CarteiraObras() {
 		if (newFilters[chartType] === label) {
 			delete newFilters[chartType];
 			console.log(`[TOAST] Filtro removido: ${label}`);
+			// Se for seccional, também sincroniza o botão lateral
+			if (chartType === 'seccionalSelected') {
+				setSelectedRegion('all')
+			}
 		} else {
 			newFilters[chartType] = label;
 			console.log(`[TOAST] Filtro aplicado: ${label}`);
+			if (chartType === 'seccionalSelected') {
+				setSelectedRegion(label)
+			}
 		}
 		setActiveFilters(newFilters);
 	};
@@ -905,7 +912,15 @@ export default function CarteiraObras() {
 										key={region}
 										variant={selectedRegion === region ? "default" : "outline"}
 										onClick={() => {
-											setSelectedRegion(selectedRegion === region ? 'all' : region);
+											const next = selectedRegion === region ? 'all' : region;
+											setSelectedRegion(next);
+											// sincroniza filtro visual do gráfico Seccionais
+											setActiveFilters(prev => {
+												const copy = { ...prev } as Record<string,string>;
+												if (next === 'all') delete copy.seccionalSelected;
+												else copy.seccionalSelected = next;
+												return copy;
+											});
 											setSidebarOpen(false);
 										}}
 										className="justify-start w-full text-sm transition-all duration-200 shadow-md rounded-xl hover:shadow-lg"
@@ -1262,7 +1277,7 @@ export default function CarteiraObras() {
 													}} />
 													<Bar yAxisId="left" dataKey="qtd" fill="url(#chartGreenGradientComparison)" radius={[8, 8, 0, 0]}>
 														{filteredData.comparison.map((_entry, index) => {
-															const selected = activeFilters.seccionalSelected;
+															const selected = activeFilters.seccionalSelected || (selectedRegion !== 'all' ? selectedRegion : '');
 															const name = filteredData.comparison[index]?.name || '';
 															const faded = selected && selected !== name;
 															return (
@@ -1276,7 +1291,7 @@ export default function CarteiraObras() {
 													</Bar>
 													<Bar yAxisId="right" dataKey="value" fill="url(#chartBlueGradientValue)" radius={[8, 8, 0, 0]}>
 														{filteredData.comparison.map((_entry, index) => {
-															const selected = activeFilters.seccionalSelected;
+															const selected = activeFilters.seccionalSelected || (selectedRegion !== 'all' ? selectedRegion : '');
 															const name = filteredData.comparison[index]?.name || '';
 															const faded = selected && selected !== name;
 															return (
