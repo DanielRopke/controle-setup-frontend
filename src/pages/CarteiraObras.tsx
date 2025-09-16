@@ -644,8 +644,28 @@ export default function CarteiraObras() {
 	// (helpers moved above)
 
 	const emAndamentoData = React.useMemo(() => groupByStatusFim(rawRows, 'Em Andamento'), [rawRows, groupByStatusFim]);
-	const concluidasData = React.useMemo(() => groupByStatusFim(rawRows, 'Concluída'), [rawRows, groupByStatusFim]);
-	const paradasData = React.useMemo(() => groupByStatusFim(rawRows, 'Parada'), [rawRows, groupByStatusFim]);
+	const concluidasData = React.useMemo(() => {
+		const arr = groupByStatusFim(rawRows, 'Concluída').slice();
+		// mover "Comissionado(a)" para o fim
+		const matchStem = (s: string) => normalize(s).includes('comissionad');
+		const tail: typeof arr = [];
+		const head: typeof arr = [];
+		for (const it of arr) {
+			if (matchStem(it.name)) tail.push(it); else head.push(it);
+		}
+		return [...head, ...tail];
+	}, [rawRows, groupByStatusFim]);
+	const paradasData = React.useMemo(() => {
+		const arr = groupByStatusFim(rawRows, 'Parada').slice();
+		// mover "Cancelada(s)" para o fim
+		const matchStem = (s: string) => normalize(s).includes('cancelad');
+		const tail: typeof arr = [];
+		const head: typeof arr = [];
+		for (const it of arr) {
+			if (matchStem(it.name)) tail.push(it); else head.push(it);
+		}
+		return [...head, ...tail];
+	}, [rawRows, groupByStatusFim]);
 
 	// Auxiliares tipadas para LabelList (evita uso de `any`)
 	const emAndamentoQty = React.useMemo(() => emAndamentoData.map(d => ({ name: d.name, qtd: d.qtd })), [emAndamentoData])
@@ -984,7 +1004,7 @@ export default function CarteiraObras() {
 				<main className="flex-1 w-full px-2 pt-0 pb-2 sm:px-4 lg:px-6 sm:pb-4 lg:pb-6 lg:ml-64">
 					<div className="lg:h-[calc(100vh-8rem)] lg:min-h-[500px] lg:max-h-[calc(100vh-8rem)] mb-8">
 						<div className="grid grid-cols-1 gap-3 lg:grid-cols-2 lg:gap-3 lg:h-full lg:grid-rows-2">
-								<Card className="shadow-card hover:shadow-card-hover bg-white border-gray-200 transform transition-all duration-300 hover:scale-[1.02] overflow-hidden" ref={statusENERRef} tabIndex={0}>
+								<Card className="shadow-card hover:shadow-card-hover bg-white border-gray-200 transform transition-all duration-300 hover:scale-[1.02] overflow-hidden order-2" ref={statusENERRef} tabIndex={0}>
 								<CardHeader className="flex flex-row items-center justify-between bg-white border-b border-gray-300 rounded-t-xl">
 									<CardTitle className="text-lg font-semibold text-secondary-foreground">Em Andamento</CardTitle>
 									<Button
@@ -1069,7 +1089,7 @@ export default function CarteiraObras() {
 								</CardContent>
 							</Card>
 
-								<Card className="shadow-card hover:shadow-card-hover bg-white border-gray-200 transform transition-all duration-300 hover:scale-[1.02] overflow-hidden" ref={comparisonRef} tabIndex={0}>
+								<Card className="shadow-card hover:shadow-card-hover bg-white border-gray-200 transform transition-all duration-300 hover:scale-[1.02] overflow-hidden order-1" ref={comparisonRef} tabIndex={0}>
 								<CardHeader className="flex flex-row items-center justify-between bg-white border-b border-gray-300 rounded-t-xl">
 									<CardTitle className="text-lg font-semibold text-secondary-foreground">Concluídas</CardTitle>
 									<Button
@@ -1154,7 +1174,7 @@ export default function CarteiraObras() {
 								</CardContent>
 							</Card>
 
-								<Card className="shadow-card hover:shadow-card-hover bg-white border-gray-200 transform transition-all duration-300 hover:scale-[1.02] overflow-hidden" ref={statusCONCRef} tabIndex={0}>
+								<Card className="shadow-card hover:shadow-card-hover bg-white border-gray-200 transform transition-all duration-300 hover:scale-[1.02] overflow-hidden order-3" ref={statusCONCRef} tabIndex={0}>
 								<CardHeader className="flex flex-row items-center justify-between bg-white border-b border-gray-300 rounded-t-xl">
 									<CardTitle className="text-lg font-semibold text-secondary-foreground">Paradas</CardTitle>
 									<Button
@@ -1239,7 +1259,7 @@ export default function CarteiraObras() {
 								</CardContent>
 							</Card>
 
-								<Card className="shadow-card hover:shadow-card-hover bg-white border-gray-200 transform transition-all duration-300 hover:scale-[1.02] overflow-hidden" ref={reasonsRef} tabIndex={0}>
+								<Card className="shadow-card hover:shadow-card-hover bg-white border-gray-200 transform transition-all duration-300 hover:scale-[1.02] overflow-hidden order-4" ref={reasonsRef} tabIndex={0}>
 									<CardHeader className="flex flex-row items-center justify-between bg-white border-b border-gray-300 rounded-t-xl">
 										<CardTitle className="text-lg font-semibold text-secondary-foreground">Seccionais</CardTitle>
 										<Button
