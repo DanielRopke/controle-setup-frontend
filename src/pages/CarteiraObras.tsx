@@ -53,7 +53,7 @@ const TwoLineTick: React.FC<ChartTickProps> = ({ x = 0, y = 0, payload }) => {
 		const words = normalizeSpace(raw).split(' ');
 		// Montar line1 até atingir ~maxChars e deixar o resto na line2
 		let cur = '';
-		let rest: string[] = [];
+	const rest: string[] = [];
 		for (const w of words) {
 			if ((cur + (cur ? ' ' : '') + w).length <= maxChars) {
 				cur = cur ? cur + ' ' + w : w;
@@ -197,7 +197,10 @@ export default function CarteiraObras() {
 	};
 
 	// Filtros interativos
-	const handleChartClick = (chartType: 'statusENER' | 'statusCONC' | 'reasons' | 'comparison', label: string) => {
+	const handleChartClick = (
+		chartType: 'statusEmAndamento' | 'statusConcluida' | 'statusParada' | 'seccionalSelected',
+		label: string
+	) => {
 		const newFilters = { ...activeFilters };
 		if (newFilters[chartType] === label) {
 			delete newFilters[chartType];
@@ -389,9 +392,22 @@ export default function CarteiraObras() {
 		const anyHasMotivos = rawRows.some(r => (r.statusServico || '').trim());
 
 	// 1) Base de linhas para OUTROS gráficos e TABELA: respeita comparação e região
-		const regionFilterForOthers = (activeFilters.comparison || (selectedRegion !== 'all' ? selectedRegion : undefined)) as string | undefined;
+		const regionFilterForOthers = (activeFilters.seccionalSelected || (selectedRegion !== 'all' ? selectedRegion : undefined)) as string | undefined;
 		let rowsForOthers = rawRows;
 				if (regionFilterForOthers) rowsForOthers = rowsForOthers.filter(r => (r.seccional || '').trim() === regionFilterForOthers);
+
+				// Aplicar filtros por clique nas barras (status fim dentro de cada agrupamento)
+				const nrm = (s: string) => normalize(s)
+				const matchGroup = (s: string, groupStem: string) => nrm(s).includes(groupStem)
+				if (activeFilters.statusEmAndamento) {
+					rowsForOthers = rowsForOthers.filter(r => matchGroup(getFieldString(r,'statusAgrupado'),'andamento') && getFieldString(r,'statusFim') === activeFilters.statusEmAndamento)
+				}
+				if (activeFilters.statusConcluida) {
+					rowsForOthers = rowsForOthers.filter(r => matchGroup(getFieldString(r,'statusAgrupado'),'concluid') && getFieldString(r,'statusFim') === activeFilters.statusConcluida)
+				}
+				if (activeFilters.statusParada) {
+					rowsForOthers = rowsForOthers.filter(r => matchGroup(getFieldString(r,'statusAgrupado'),'parad') && getFieldString(r,'statusFim') === activeFilters.statusParada)
+				}
 
 				// Filtragem por status ENER / CONC / Motivos.
 				// Se a matriz (rawRows) possui os campos auxiliares, filtramos diretamente por eles.
@@ -470,6 +486,10 @@ export default function CarteiraObras() {
 		if (activeFilters.statusENER && anyHasEner) rowsForComparison = rowsForComparison.filter(r => (r.statusEner || '').trim() === activeFilters.statusENER);
 		if (activeFilters.statusCONC && anyHasConc) rowsForComparison = rowsForComparison.filter(r => (r.statusConc || '').trim() === activeFilters.statusCONC);
 		if (activeFilters.reasons && anyHasMotivos) rowsForComparison = rowsForComparison.filter(r => (r.statusServico || '').trim() === activeFilters.reasons);
+				// aplicar também os filtros por clique (status fim por agrupamento)
+				if (activeFilters.statusEmAndamento) rowsForComparison = rowsForComparison.filter(r => nrm(getFieldString(r,'statusAgrupado')).includes('andamento') && getFieldString(r,'statusFim') === activeFilters.statusEmAndamento)
+				if (activeFilters.statusConcluida) rowsForComparison = rowsForComparison.filter(r => nrm(getFieldString(r,'statusAgrupado')).includes('concluid') && getFieldString(r,'statusFim') === activeFilters.statusConcluida)
+				if (activeFilters.statusParada) rowsForComparison = rowsForComparison.filter(r => nrm(getFieldString(r,'statusAgrupado')).includes('parad') && getFieldString(r,'statusFim') === activeFilters.statusParada)
 
 				// Aplicar também os filtros globais aos dados de comparação (exceto região/comparativo)
 				if (selectedStatusSap) rowsForComparison = rowsForComparison.filter(r => (r.statusSap || '').trim() === selectedStatusSap);
@@ -970,7 +990,7 @@ export default function CarteiraObras() {
 													const p = props as ChartTickProps;
 													const value = p && p.payload ? p.payload.value : '';
 													return (
-														<g transform={`translate(${p.x},${p.y})`} style={{ cursor: 'pointer' }} onClick={() => handleChartClick('statusENER', String(value))}>
+															<g transform={`translate(${p.x},${p.y})`} style={{ cursor: 'pointer' }} onClick={() => handleChartClick('statusEmAndamento', String(value))}>
 															<TwoLineTick x={0} y={0} payload={{ value: String(value) }} />
 														</g>
 													);
@@ -989,18 +1009,28 @@ export default function CarteiraObras() {
 													}}
 												/>
 												<Bar yAxisId="left" dataKey="qtd" fill="url(#chartGreenGradientComparison)" radius={[8, 8, 0, 0]}>
-													{emAndamentoData.map((_entry, index) => (
-														<Cell key={`cell-${index}`} fill={"url(#chartGreenGradientComparison)"} />
-													))}
+													{emAndamentoData.map((_entry, index) => {
+														const selected = activeFilters.statusEmAndamento;
+														const name = emAndamentoData[index]?.name || '';
+														const faded = selected && selected !== name;
+														return (
+															<Cell key={`cell-${index}`} fill={"url(#chartGreenGradientComparison)"} fillOpacity={faded ? 0.5 : 1} onClick={() => handleChartClick('statusEmAndamento', name)} />
+														)
+													})}
 													<LabelList dataKey="qtd" content={makeLabelRenderer(
 														emAndamentoQty,
 														() => false,
 													)} />
 												</Bar>
 												<Bar yAxisId="right" dataKey="value" fill="url(#chartBlueGradientValue)" radius={[8, 8, 0, 0]}>
-													{emAndamentoData.map((_entry, index) => (
-														<Cell key={`cellv-${index}`} fill={"url(#chartBlueGradientValue)"} />
-													))}
+													{emAndamentoData.map((_entry, index) => {
+														const selected = activeFilters.statusEmAndamento;
+														const name = emAndamentoData[index]?.name || '';
+														const faded = selected && selected !== name;
+														return (
+															<Cell key={`cellv-${index}`} fill={"url(#chartBlueGradientValue)"} fillOpacity={faded ? 0.5 : 1} onClick={() => handleChartClick('statusEmAndamento', name)} />
+														)
+													})}
 													<LabelList dataKey="value" content={makeValueLabelRenderer(
 														emAndamentoValue,
 														() => false,
@@ -1045,7 +1075,7 @@ export default function CarteiraObras() {
 													const p = props as ChartTickProps;
 													const value = p && p.payload ? p.payload.value : '';
 													return (
-														<g transform={`translate(${p.x},${p.y})`} style={{ cursor: 'pointer' }} onClick={() => handleChartClick('comparison', String(value))}>
+														<g transform={`translate(${p.x},${p.y})`} style={{ cursor: 'pointer' }} onClick={() => handleChartClick('statusConcluida', String(value))}>
 															<TwoLineTick x={0} y={0} payload={{ value: String(value) }} />
 														</g>
 													);
@@ -1064,18 +1094,28 @@ export default function CarteiraObras() {
 													}}
 												/>
 												<Bar yAxisId="left" dataKey="qtd" fill="url(#chartGreenGradientComparison)" radius={[8, 8, 0, 0]}>
-													{concluidasData.map((_entry, index) => (
-														<Cell key={`cell-${index}`} fill={"url(#chartGreenGradientComparison)"} />
-													))}
+													{concluidasData.map((_entry, index) => {
+														const selected = activeFilters.statusConcluida;
+														const name = concluidasData[index]?.name || '';
+														const faded = selected && selected !== name;
+														return (
+															<Cell key={`cell-${index}`} fill={"url(#chartGreenGradientComparison)"} fillOpacity={faded ? 0.5 : 1} onClick={() => handleChartClick('statusConcluida', name)} />
+														)
+													})}
 													<LabelList dataKey="qtd" content={makeLabelRenderer(
 														concluidasQty,
 														() => false,
 													)} />
 												</Bar>
 												<Bar yAxisId="right" dataKey="value" fill="url(#chartBlueGradientValue)" radius={[8, 8, 0, 0]}>
-													{concluidasData.map((_entry, index) => (
-														<Cell key={`cellv-${index}`} fill={"url(#chartBlueGradientValue)"} />
-													))}
+													{concluidasData.map((_entry, index) => {
+														const selected = activeFilters.statusConcluida;
+														const name = concluidasData[index]?.name || '';
+														const faded = selected && selected !== name;
+														return (
+															<Cell key={`cellv-${index}`} fill={"url(#chartBlueGradientValue)"} fillOpacity={faded ? 0.5 : 1} onClick={() => handleChartClick('statusConcluida', name)} />
+														)
+													})}
 													<LabelList dataKey="value" content={makeValueLabelRenderer(
 														concluidasValue,
 														() => false,
@@ -1120,7 +1160,7 @@ export default function CarteiraObras() {
 													const p = props as ChartTickProps;
 													const value = p && p.payload ? p.payload.value : '';
 													return (
-														<g transform={`translate(${p.x},${p.y})`} style={{ cursor: 'pointer' }} onClick={() => handleChartClick('statusCONC', String(value))}>
+														<g transform={`translate(${p.x},${p.y})`} style={{ cursor: 'pointer' }} onClick={() => handleChartClick('statusParada', String(value))}>
 															<TwoLineTick x={0} y={0} payload={{ value: String(value) }} />
 														</g>
 													);
@@ -1139,18 +1179,28 @@ export default function CarteiraObras() {
 													}}
 												/>
 												<Bar yAxisId="left" dataKey="qtd" fill="url(#chartGreenGradientConc)" radius={[8, 8, 0, 0]}>
-													{paradasData.map((_entry, index) => (
-														<Cell key={`cell-${index}`} fill={"url(#chartGreenGradientConc)"} />
-													))}
+													{paradasData.map((_entry, index) => {
+														const selected = activeFilters.statusParada;
+														const name = paradasData[index]?.name || '';
+														const faded = selected && selected !== name;
+														return (
+															<Cell key={`cell-${index}`} fill={"url(#chartGreenGradientConc)"} fillOpacity={faded ? 0.5 : 1} onClick={() => handleChartClick('statusParada', name)} />
+														)
+													})}
 													<LabelList dataKey="qtd" content={makeLabelRenderer(
 														paradasQty,
 														() => false,
 													)} />
 												</Bar>
 												<Bar yAxisId="right" dataKey="value" fill="url(#chartBlueGradientValue)" radius={[8, 8, 0, 0]}>
-													{paradasData.map((_entry, index) => (
-														<Cell key={`cellv-${index}`} fill={"url(#chartBlueGradientValue)"} />
-													))}
+													{paradasData.map((_entry, index) => {
+														const selected = activeFilters.statusParada;
+														const name = paradasData[index]?.name || '';
+														const faded = selected && selected !== name;
+														return (
+															<Cell key={`cellv-${index}`} fill={"url(#chartBlueGradientValue)"} fillOpacity={faded ? 0.5 : 1} onClick={() => handleChartClick('statusParada', name)} />
+														)
+													})}
 													<LabelList dataKey="value" content={makeValueLabelRenderer(
 														paradasValue,
 														() => false,
@@ -1195,7 +1245,7 @@ export default function CarteiraObras() {
 														const p = props as ChartTickProps;
 													const value = p && p.payload ? p.payload.value : '';
 														return (
-															<g transform={`translate(${p.x},${p.y})`} style={{ cursor: 'pointer' }} onClick={() => handleChartClick('comparison', String(value))}>
+															<g transform={`translate(${p.x},${p.y})`} style={{ cursor: 'pointer' }} onClick={() => handleChartClick('seccionalSelected', String(value))}>
 																<TwoLineTick x={0} y={0} payload={{ value: String(value) }} />
 															</g>
 														);
@@ -1211,18 +1261,28 @@ export default function CarteiraObras() {
 														return [num.toLocaleString('pt-BR'), 'PEP'];
 													}} />
 													<Bar yAxisId="left" dataKey="qtd" fill="url(#chartGreenGradientComparison)" radius={[8, 8, 0, 0]}>
-														{filteredData.comparison.map((_entry, index) => (
-															<Cell key={`cell-secc-${index}`} fill={"url(#chartGreenGradientComparison)"} />
-														))}
+														{filteredData.comparison.map((_entry, index) => {
+															const selected = activeFilters.seccionalSelected;
+															const name = filteredData.comparison[index]?.name || '';
+															const faded = selected && selected !== name;
+															return (
+																<Cell key={`cell-secc-${index}`} fill={"url(#chartGreenGradientComparison)"} fillOpacity={faded ? 0.5 : 1} onClick={() => handleChartClick('seccionalSelected', name)} />
+															)
+														})}
 														<LabelList dataKey="qtd" content={makeLabelRenderer(
 															seccionaisQty,
 															() => false,
 														)} />
 													</Bar>
 													<Bar yAxisId="right" dataKey="value" fill="url(#chartBlueGradientValue)" radius={[8, 8, 0, 0]}>
-														{filteredData.comparison.map((_entry, index) => (
-															<Cell key={`cellv-secc-${index}`} fill={"url(#chartBlueGradientValue)"} />
-														))}
+														{filteredData.comparison.map((_entry, index) => {
+															const selected = activeFilters.seccionalSelected;
+															const name = filteredData.comparison[index]?.name || '';
+															const faded = selected && selected !== name;
+															return (
+																<Cell key={`cellv-secc-${index}`} fill={"url(#chartBlueGradientValue)"} fillOpacity={faded ? 0.5 : 1} onClick={() => handleChartClick('seccionalSelected', name)} />
+															)
+														})}
 														<LabelList dataKey="value" content={makeValueLabelRenderer(
 															seccionaisValue,
 															() => false,
