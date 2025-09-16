@@ -17,7 +17,7 @@ import {
   LabelList,
   Cell
 } from 'recharts'
-import { useState, useMemo } from 'react';
+import { useState } from 'react';
 
 
 export default function CarteiraObras() {
@@ -39,7 +39,6 @@ export default function CarteiraObras() {
   const mesesList: string[] = []
   type SeccionalItemLocal = { seccional?: string; totalRS?: number; totalPEP?: number }
   const graficoSeccionalRS: SeccionalItemLocal[] = []
-  const matriz: SeccionalItemLocal[] = []
 
   const [activeFilters, setActiveFilters] = useState<{
     statusENER?: string;
