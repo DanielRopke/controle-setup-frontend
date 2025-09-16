@@ -42,6 +42,45 @@ type BarLabelProps = {
 type ChartTickProps = { x?: number; y?: number; payload?: { value?: string } };
 // (intencionalmente removido tipo BarDatumLike não utilizado)
 
+// Tick horizontal com quebra em até 2 linhas
+const TwoLineTick: React.FC<ChartTickProps> = ({ x = 0, y = 0, payload }) => {
+	const raw = String(payload?.value ?? '');
+	const maxChars = 12;
+	const normalizeSpace = (s: string) => s.replace(/\s+/g, ' ').trim();
+	let line1 = raw;
+	let line2 = '';
+	if (raw.length > maxChars) {
+		const words = normalizeSpace(raw).split(' ');
+		// Montar line1 até atingir ~maxChars e deixar o resto na line2
+		let cur = '';
+		let rest: string[] = [];
+		for (const w of words) {
+			if ((cur + (cur ? ' ' : '') + w).length <= maxChars) {
+				cur = cur ? cur + ' ' + w : w;
+			} else {
+				rest.push(w);
+			}
+		}
+		// Se cur ficou vazio (palavra única muito grande), quebra por meio
+		if (!cur) {
+			const half = Math.ceil(raw.length / 2);
+			line1 = raw.slice(0, half);
+			line2 = raw.slice(half);
+		} else {
+			line1 = cur;
+			line2 = rest.join(' ');
+		}
+	}
+	return (
+		<g transform={`translate(${x},${y})`}>
+			<text x={0} y={0} dy={14} textAnchor="middle" fontSize={12} fill="currentColor">
+				<tspan x={0} dy={0}>{line1}</tspan>
+				{line2 ? <tspan x={0} dy={14}>{line2}</tspan> : null}
+			</text>
+		</g>
+	);
+};
+
 export default function CarteiraObras() {
 	const navigate = useNavigate();
 	const [selectedRegion, setSelectedRegion] = useState<string>('all');
@@ -925,19 +964,19 @@ export default function CarteiraObras() {
 								<CardContent className="p-4">
 									<ChartContainer config={{ value: { label: "R$", color: "hsl(var(--primary))" } }} className="h-64 sm:h-72 md:h-80 lg:h-[calc((100vh-20rem)/2)] lg:max-h-[350px] w-full">
 										<ResponsiveContainer width="100%" height="100%">
-											<BarChart data={emAndamentoData} margin={{ top: 20, right: 10, bottom: 70, left: 10 }} barGap={6} barCategoryGap={16}>
+											<BarChart data={emAndamentoData} margin={{ top: 20, right: 10, bottom: 55, left: 10 }} barGap={6} barCategoryGap={16}>
 												<CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
 												<XAxis dataKey="name" fontSize={12} tickMargin={8} interval={0} tick={(props: unknown) => {
 													const p = props as ChartTickProps;
 													const value = p && p.payload ? p.payload.value : '';
 													return (
 														<g transform={`translate(${p.x},${p.y})`} style={{ cursor: 'pointer' }} onClick={() => handleChartClick('statusENER', String(value))}>
-															<text transform="rotate(-25)" x={0} y={0} dy={14} textAnchor="end" fontSize={12} fill="currentColor">{String(value)}</text>
+															<TwoLineTick x={0} y={0} payload={{ value: String(value) }} />
 														</g>
 													);
 												}} />
-												<YAxis yAxisId="left" hide />
-												<YAxis yAxisId="right" orientation="right" hide />
+												<YAxis yAxisId="left" hide domain={[0, 'dataMax']} />
+												<YAxis yAxisId="right" orientation="right" hide domain={[0, 'dataMax']} />
 												<Tooltip
 													contentStyle={{ backgroundColor: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: '8px', boxShadow: 'var(--shadow-elegant)' }}
 													formatter={(value, _name, item) => {
@@ -1000,19 +1039,19 @@ export default function CarteiraObras() {
 								<CardContent className="p-4">
 									<ChartContainer config={{ value: { label: "R$", color: "hsl(var(--primary))" } }} className="h-64 sm:h-72 md:h-80 lg:h-[calc((100vh-20rem)/2)] lg:max-h-[350px] w-full">
 										<ResponsiveContainer width="100%" height="100%">
-											<BarChart data={concluidasData} margin={{ top: 20, right: 10, bottom: 70, left: 10 }} barGap={6} barCategoryGap={16}>
+											<BarChart data={concluidasData} margin={{ top: 20, right: 10, bottom: 55, left: 10 }} barGap={6} barCategoryGap={16}>
 												<CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
 												<XAxis dataKey="name" fontSize={12} tickMargin={8} interval={0} tick={(props: unknown) => {
 													const p = props as ChartTickProps;
 													const value = p && p.payload ? p.payload.value : '';
 													return (
 														<g transform={`translate(${p.x},${p.y})`} style={{ cursor: 'pointer' }} onClick={() => handleChartClick('comparison', String(value))}>
-															<text transform="rotate(-25)" x={0} y={0} dy={14} textAnchor="end" fontSize={12} fill="currentColor">{String(value)}</text>
+															<TwoLineTick x={0} y={0} payload={{ value: String(value) }} />
 														</g>
 													);
 												}} />
-												<YAxis yAxisId="left" hide />
-												<YAxis yAxisId="right" orientation="right" hide />
+												<YAxis yAxisId="left" hide domain={[0, 'dataMax']} />
+												<YAxis yAxisId="right" orientation="right" hide domain={[0, 'dataMax']} />
 												<Tooltip
 													contentStyle={{ backgroundColor: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: '8px', boxShadow: 'var(--shadow-elegant)' }}
 													formatter={(value, _name, item) => {
@@ -1075,19 +1114,19 @@ export default function CarteiraObras() {
 								<CardContent className="p-4">
 									<ChartContainer config={{ value: { label: "R$", color: "hsl(var(--primary))" } }} className="h-64 sm:h-72 md:h-80 lg:h-[calc((100vh-20rem)/2)] lg:max-h-[350px] w-full">
 										<ResponsiveContainer width="100%" height="100%">
-											<BarChart data={paradasData} margin={{ top: 20, right: 10, bottom: 70, left: 10 }} barGap={6} barCategoryGap={16}>
+											<BarChart data={paradasData} margin={{ top: 20, right: 10, bottom: 55, left: 10 }} barGap={6} barCategoryGap={16}>
 												<CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
 												<XAxis dataKey="name" fontSize={12} tickMargin={8} interval={0} tick={(props: unknown) => {
 													const p = props as ChartTickProps;
 													const value = p && p.payload ? p.payload.value : '';
 													return (
 														<g transform={`translate(${p.x},${p.y})`} style={{ cursor: 'pointer' }} onClick={() => handleChartClick('statusCONC', String(value))}>
-															<text transform="rotate(-25)" x={0} y={0} dy={14} textAnchor="end" fontSize={12} fill="currentColor">{String(value)}</text>
+															<TwoLineTick x={0} y={0} payload={{ value: String(value) }} />
 														</g>
 													);
 												}} />
-												<YAxis yAxisId="left" hide />
-												<YAxis yAxisId="right" orientation="right" hide />
+												<YAxis yAxisId="left" hide domain={[0, 'dataMax']} />
+												<YAxis yAxisId="right" orientation="right" hide domain={[0, 'dataMax']} />
 												<Tooltip
 													contentStyle={{ backgroundColor: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: '8px', boxShadow: 'var(--shadow-elegant)' }}
 													formatter={(value, _name, item) => {
@@ -1150,19 +1189,19 @@ export default function CarteiraObras() {
 									<CardContent className="p-4">
 										<ChartContainer config={{ value: { label: "R$", color: "hsl(var(--primary))" } }} className="h-64 sm:h-72 md:h-80 lg:h-[calc((100vh-20rem)/2)] lg:max-h-[350px] w-full">
 											<ResponsiveContainer width="100%" height="100%">
-												<BarChart data={filteredData.comparison} margin={{ top: 20, right: 10, bottom: 70, left: 10 }} barGap={6} barCategoryGap={10}>
+												<BarChart data={filteredData.comparison} margin={{ top: 20, right: 10, bottom: 55, left: 10 }} barGap={6} barCategoryGap={10}>
 													<CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
 													<XAxis dataKey="name" fontSize={12} tickMargin={8} interval={0} minTickGap={0} tick={(props: unknown) => {
 														const p = props as ChartTickProps;
-														const value = p && p.payload ? p.payload.value : '';
+													const value = p && p.payload ? p.payload.value : '';
 														return (
 															<g transform={`translate(${p.x},${p.y})`} style={{ cursor: 'pointer' }} onClick={() => handleChartClick('comparison', String(value))}>
-																<text transform="rotate(-25)" x={0} y={0} dy={14} textAnchor="end" fontSize={12} fill="currentColor">{String(value)}</text>
+																<TwoLineTick x={0} y={0} payload={{ value: String(value) }} />
 															</g>
 														);
 													}} />
-													<YAxis yAxisId="left" hide />
-													<YAxis yAxisId="right" orientation="right" hide />
+													<YAxis yAxisId="left" hide domain={[0, 'dataMax']} />
+													<YAxis yAxisId="right" orientation="right" hide domain={[0, 'dataMax']} />
 													<Tooltip contentStyle={{ backgroundColor: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: '8px', boxShadow: 'var(--shadow-elegant)' }} formatter={(value, _name, item) => {
 														const num = typeof value === 'number' ? value : Number(value) || 0;
 														type TP = { dataKey?: string | number } | undefined;
