@@ -23,6 +23,8 @@ export interface MatrizRow {
   statusEner?: string
   statusConc?: string
   statusServico?: string
+  statusFim?: string
+  statusAgrupado?: string
 }
 
 function flattenByField(rows: MatrizRow[], field: keyof MatrizRow) {
@@ -107,6 +109,8 @@ export default function useGoogleSheetCarteira(sheetId: string, sheetName = 'Car
           prazo: String(r.Prazo || r.prazo || r.PRAZO || '') || undefined,
           dataConclusao: String(r['Data Conclusão'] || r.dataConclusao || r.data || '') || undefined,
           statusSap: String(r['Status SAP'] || r.statusSap || r.status || '') || undefined,
+          statusFim: String(r['STATUS FIM'] || r['Status Fim'] || r.statusFim || r['Status FIM'] || r['Status fim'] || '') || undefined,
+          statusAgrupado: String(r['STATUS AGRUPADO'] || r['Status Agrupado'] || r.statusAgrupado || r['Status agrupado'] || '') || undefined,
           valor: parseNumber(r.Valor || r.valor || r.RS || r.rs || r['Valor (R$)'] || r['R$'] || 0),
           seccional: String(r.Seccional || r.seccional || r.Seccao || r.seccao || '') || undefined,
           tipo: String(r.Tipo || r.tipo || '') || undefined,
