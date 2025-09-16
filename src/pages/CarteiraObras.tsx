@@ -15,7 +15,7 @@ import { PEPSearch } from '../components/PEPSearch';
 import { cn } from "../lib/utils";
 import useGoogleSheetCarteira from '../hooks/useGoogleSheetCarteira';
 import type { MatrizItem } from '../services/api';
-import { getMatrizDados } from '../services/api';
+import { getMatrizDados, getCarteiraObras } from '../services/api';
 import { showToast } from '../components/toast';
 import LogoSetup from '../assets/LogoSetup1.png';
 import { FundoAnimado } from '../components/FundoAnimado';
@@ -589,26 +589,26 @@ export default function CarteiraObras() {
 			if (sheetLoadError) {
 				let cancelled = false
 				getCarteiraObras()
-					.then((res) => {
+					.then((res: { data?: MatrizItem[] }) => {
 						if (cancelled) return
-						const data = (res && (res as { data?: MatrizItem[] }).data) || []
+						const data = (res && res.data) || []
 						if (Array.isArray(data) && data.length) {
 							setRawRows(data as MatrizItem[])
 							try { showToast(`Carteira de Obras (backend) Carregado: ${data.length} linhas`); } catch (e) { console.debug(e) }
 						}
 					})
-					.catch((err) => {
+					.catch((err: unknown) => {
 						console.error('Fallback backend carteira-obras failed', err)
 						// se falhou, tentar /matriz-dados/ como antes
 						getMatrizDados()
-							.then((res2) => {
-								const d2 = (res2 && (res2 as { data?: MatrizItem[] }).data) || []
+							.then((res2: { data?: MatrizItem[] }) => {
+								const d2 = (res2 && res2.data) || []
 								if (Array.isArray(d2) && d2.length) {
 									setRawRows(d2 as MatrizItem[])
 									try { showToast(`Carteira de Obras (backend matriz-dados) Carregado: ${d2.length} linhas`); } catch (e) { console.debug(e) }
 								}
 							})
-							.catch((err2) => {
+							.catch((err2: unknown) => {
 								console.error('Fallback matriz-dados failed', err2)
 								try { showToast('Erro ao carregar dados do backend como fallback'); } catch (e) { console.debug(e) }
 							})
