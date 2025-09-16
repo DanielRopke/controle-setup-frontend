@@ -88,6 +88,29 @@ export default function CarteiraObras() {
 		};
 	}, []);
 
+	// Global error handlers to surface runtime exceptions as toasts (ajuda debug em produção)
+	useEffect(() => {
+		if (typeof window === 'undefined') return;
+		const onError = (ev: ErrorEvent) => {
+			try {
+				console.error('Global error captured in CarteiraObras', ev.error || ev.message, ev);
+				showToast(`Erro na página Carteira de Obras: ${String(ev.message || ev.error || 'ver console')}`);
+			} catch (e) { console.debug('failed to report global error', e) }
+		};
+		const onRejection = (ev: PromiseRejectionEvent) => {
+			try {
+				console.error('Unhandled rejection in CarteiraObras', ev.reason);
+				showToast(`Erro não tratado: ${String(ev.reason?.message || ev.reason || 'ver console')}`);
+			} catch (e) { console.debug('failed to report rejection', e) }
+		};
+		window.addEventListener('error', onError as EventListener);
+		window.addEventListener('unhandledrejection', onRejection as EventListener);
+		return () => {
+			window.removeEventListener('error', onError as EventListener);
+			window.removeEventListener('unhandledrejection', onRejection as EventListener);
+		};
+	}, []);
+
 	// Estados para filtros interativos
 	const [activeFilters, setActiveFilters] = useState<Record<string, string>>({});
 
@@ -631,12 +654,21 @@ export default function CarteiraObras() {
 			const canvas = await html2canvas(chartRef.current, { backgroundColor: '#ffffff', scale: 2, useCORS: true, allowTaint: true });
 			canvas.toBlob((blob) => {
 				if (blob) {
-					const item = new ClipboardItem({ 'image/png': blob });
-					navigator.clipboard.write([item]).then(() => {
-						showToast(`Imagem do gráfico ${chartName} copiada!`);
-					}).catch(() => {
-						showToast(`Erro ao copiar imagem do gráfico ${chartName}`);
-					});
+							try {
+								if (typeof (window as any).ClipboardItem !== 'function') {
+									showToast('API ClipboardImage não suportada neste navegador');
+									return;
+								}
+								const item = new (window as any).ClipboardItem({ 'image/png': blob });
+								navigator.clipboard.write([item]).then(() => {
+									showToast(`Imagem do gráfico ${chartName} copiada!`);
+								}).catch(() => {
+									showToast(`Erro ao copiar imagem do gráfico ${chartName}`);
+								});
+							} catch (e) {
+								console.error('Erro ao tentar copiar imagem para clipboard', e)
+								showToast(`Erro ao copiar imagem do gráfico ${chartName}`);
+							}
 				}
 			});
 		} catch (error) {
