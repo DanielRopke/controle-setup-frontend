@@ -1,11 +1,8 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import { useNavigate } from 'react-router-dom'
 import { SidebarFiltros } from '../components/SidebarFiltros'
 import { TabelaMatriz } from '../components/TabelaMatriz'
 import { useFiltros } from '../hooks/useFiltros'
-import { useDadosGraficos } from '../hooks/useDadosGraficos'
-import useGoogleSheetCarteira from '../hooks/useGoogleSheetCarteira'
-import { processarDados } from '../utils/processarDados'
+import { useEffect } from 'react'
 import logo from '../assets/logo.png'
 import filtroLimpo from '../assets/filtro-limpo.png'
 
@@ -35,29 +32,14 @@ export default function CarteiraObras() {
     mes,
     setMes
   } = useFiltros();
-  const {
-    seccionais,
-    statusSapList,
-    tiposList,
-    mesesList,
-    graficoEner,
-    graficoConc,
-    graficoServico,
-    graficoSeccionalRS,
-    matriz
-  // Tipagem local simplificada: os hooks retornam objetos cujo shape é complexo;
-  // aqui usamos any[] para evitar erros TS por ora (manter compatibilidade com PrazosSAP).
-  } = useDadosGraficos({ seccionais: seccionaisSelecionadas, statusSap, tipo, mes }) as any;
-  // Hook alternativo: carregar dados diretamente do Google Sheets (aba CarteiraObras)
-  const sheetId = '1wj3AZ5__Ak8THPHu-Lr1iGU-7l9fX8sf6MVY-kBMFhI'
-  const googleData = useGoogleSheetCarteira(sheetId, 'CarteiraObras') as any
-  // preferir dados do google quando disponíveis
-  const graficoEnerSrc = (googleData && googleData.graficoEner && Object.keys(googleData.graficoEner).length) ? googleData.graficoEner : graficoEner
-  const graficoConcSrc = (googleData && googleData.graficoConc && Object.keys(googleData.graficoConc).length) ? googleData.graficoConc : graficoConc
-  const graficoServicoSrc = (googleData && googleData.graficoServico && Object.keys(googleData.graficoServico).length) ? googleData.graficoServico : graficoServico
-  const graficoSeccionalRSSrc = (googleData && googleData.graficoSeccionalRS && Object.keys(googleData.graficoSeccionalRS).length) ? googleData.graficoSeccionalRS : graficoSeccionalRS
-  const matrizSrc = (googleData && Array.isArray(googleData.matriz) && googleData.matriz.length) ? googleData.matriz : matriz
-  // NOTE: useDadosGraficos returns complex shapes; we'll normalize arrays inside useMemo
+  // For now render layout-only. We'll wire data later.
+  const seccionais: string[] = []
+  const statusSapList: string[] = []
+  const tiposList: string[] = []
+  const mesesList: string[] = []
+  type SeccionalItemLocal = { seccional?: string; totalRS?: number; totalPEP?: number }
+  const graficoSeccionalRS: SeccionalItemLocal[] = []
+  const matriz: SeccionalItemLocal[] = []
 
   const [activeFilters, setActiveFilters] = useState<{
     statusENER?: string;
@@ -65,6 +47,12 @@ export default function CarteiraObras() {
     comparison?: string;
     reasons?: string;
   }>({});
+
+  useEffect(() => {
+    const prev = document.title
+    document.title = 'Carteira de Obras'
+    return () => { document.title = prev }
+  }, [])
 
   function handleChartClick(
     chartType: 'statusENER'|'statusCONC'|'comparison'|'reasons',
@@ -82,55 +70,12 @@ export default function CarteiraObras() {
     }));
   }
 
-  const {
-    dadosEner,
-    dadosConc,
-    dadosServico,
-    graficoSeccionalRSOrdenado,
-    matrizFiltrada
-  } = useMemo(() => {
-    const graficoEnerArr: any[] = (graficoEnerSrc as any) || [];
-    const graficoConcArr: any[] = (graficoConcSrc as any) || [];
-    const graficoServicoArr: any[] = (graficoServicoSrc as any) || [];
-    const graficoSeccionalRSArr: any[] = (graficoSeccionalRSSrc as any) || [];
-    const matrizArr: any[] = (matrizSrc as any) || [];
-
-    const allSeccsSet = new Set<string>(
-      (Array.isArray(graficoSeccionalRSArr) ? graficoSeccionalRSArr : []).map((g: any) => String(g.seccional))
-    );
-    const sets: Array<Set<string>> = [];
-    if (activeFilters.comparison) sets.push(new Set([activeFilters.comparison]));
-    if (activeFilters.statusENER) {
-      const s = new Set<string>(
-        graficoEnerArr.filter((i: any) => i.status === activeFilters.statusENER).map((i: any) => String(i.seccional))
-      ); if (s.size) sets.push(s);
-    }
-    if (activeFilters.statusCONC) {
-      const s = new Set<string>(
-        graficoConcArr.filter((i: any) => i.status === activeFilters.statusCONC).map((i: any) => String(i.seccional))
-      ); if (s.size) sets.push(s);
-    }
-    if (activeFilters.reasons) {
-      const s = new Set<string>(
-        graficoServicoArr.filter((i: any) => i.status === activeFilters.reasons).map((i: any) => String(i.seccional))
-      ); if (s.size) sets.push(s);
-    }
-    let selectedSeccs: Set<string> = new Set(allSeccsSet);
-    if (sets.length) selectedSeccs = new Set([...allSeccsSet].filter(s => sets.every(seti => seti.has(s))));
-    const selectedSeccsArr = [...selectedSeccs];
-    let dadosEner = processarDados(graficoEnerArr, false, { seccionais: selectedSeccsArr }).slice();
-    let dadosConc = processarDados(graficoConcArr, true, { seccionais: selectedSeccsArr }).slice();
-    let dadosServico = processarDados(graficoServicoArr, false, { seccionais: selectedSeccsArr }).slice();
-    const graficoSeccionalRSOrdenado = (Array.isArray(graficoSeccionalRSArr) ? graficoSeccionalRSArr : [])
-      .filter((item: any) => selectedSeccs.has(item.seccional))
-      .slice()
-      .sort((a, b) => (b.totalRS ?? 0) - (a.totalRS ?? 0));
-  const matrizFiltrada = matrizArr.filter((item: any) => selectedSeccs.has(String(item.seccional)));
-    dadosEner = dadosEner.sort((a, b) => (b.count ?? 0) - (a.count ?? 0));
-    dadosConc = dadosConc.sort((a, b) => (b.count ?? 0) - (a.count ?? 0));
-    dadosServico = dadosServico.sort((a, b) => (b.count ?? 0) - (a.count ?? 0));
-    return { dadosEner, dadosConc, dadosServico, graficoSeccionalRSOrdenado, matrizFiltrada };
-  }, [graficoEnerSrc, graficoConcSrc, graficoServicoSrc, graficoSeccionalRSSrc, matrizSrc, activeFilters]);
+  // Render empty datasets for now so the layout can be validated visually
+  const dadosEner: any[] = []
+  const dadosConc: any[] = []
+  const dadosServico: any[] = []
+  const graficoSeccionalRSOrdenado: any[] = []
+  const matrizFiltrada: any[] = []
 
   const formatarValorRS = (valor: number) =>
     valor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', minimumFractionDigits: 0 });
@@ -168,7 +113,7 @@ export default function CarteiraObras() {
           <span>Valor Total</span>
           <span className="text-base font-semibold text-green-700" style={{ fontWeight: 600 }}>
             {formatarValorRS(
-              Array.isArray(graficoSeccionalRSSrc as any) ? (graficoSeccionalRSSrc as any).reduce((acc: number, cur: any) => acc + (cur.totalRS || 0), 0) : 0
+              Array.isArray(graficoSeccionalRS) ? (graficoSeccionalRS as any).reduce((acc: number, cur: any) => acc + (cur.totalRS || 0), 0) : 0
             )}
           </span>
         </div>
@@ -180,14 +125,14 @@ export default function CarteiraObras() {
             <span>Valor Total</span>
             <span className="text-base font-semibold text-green-700" style={{ fontWeight: 600 }}>
               {formatarValorRS(
-                Array.isArray(graficoSeccionalRSSrc as any) ? (graficoSeccionalRSSrc as any).reduce((acc: number, cur: any) => acc + (cur.totalRS || 0), 0) : 0
+                Array.isArray(graficoSeccionalRS) ? (graficoSeccionalRS as any).reduce((acc: number, cur: any) => acc + (cur.totalRS || 0), 0) : 0
               )}
             </span>
           </div>
           <div className="flex flex-col items-center justify-center text-lg font-bold text-gray-100 bg-gray-800 border-2 border-gray-700 rounded-full shadow-3d" style={{ width: 160, height: 48, backgroundColor: '#fff' }}>
             <span>Qtd de PEP</span>
             <span className="text-base font-semibold text-green-700" style={{ fontWeight: 600 }}>
-              {Array.isArray(graficoSeccionalRSSrc as any) ? (graficoSeccionalRSSrc as any).reduce((acc: number, cur: any) => acc + (cur.totalPEP || 0), 0) : 0}
+              {Array.isArray(graficoSeccionalRS) ? (graficoSeccionalRS as any).reduce((acc: number, cur: any) => acc + (cur.totalPEP || 0), 0) : 0}
             </span>
           </div>
         </div>
