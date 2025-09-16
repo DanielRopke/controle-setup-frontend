@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../components/ui/table";
 import { Copy, RotateCcw, Menu, ChevronUp, ChevronDown, ChevronsUpDown } from 'lucide-react';
 import { ChartContainer } from "../components/ui/chart";
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, LabelList } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, LabelList, ReferenceLine } from 'recharts';
 import html2canvas from 'html2canvas';
 import * as XLSX from 'xlsx';
 import { DateRangeFilter } from '../components/DateRangeFilter';
@@ -667,6 +667,16 @@ export default function CarteiraObras() {
 		return [...head, ...tail];
 	}, [rawRows, groupByStatusFim]);
 
+	// Nome da primeira coluna "final" (se existir) para desenhar um traço separador
+	const concluidasDividerName = React.useMemo(() => {
+		const idx = concluidasData.findIndex(it => normalize(it.name).includes('comissionad'));
+		return idx > 0 ? concluidasData[idx].name : null;
+	}, [concluidasData]);
+	const paradasDividerName = React.useMemo(() => {
+		const idx = paradasData.findIndex(it => normalize(it.name).includes('cancelad'));
+		return idx > 0 ? paradasData[idx].name : null;
+	}, [paradasData]);
+
 	// Auxiliares tipadas para LabelList (evita uso de `any`)
 	const emAndamentoQty = React.useMemo(() => emAndamentoData.map(d => ({ name: d.name, qtd: d.qtd })), [emAndamentoData])
 	const emAndamentoValue = React.useMemo(() => emAndamentoData.map(d => ({ name: d.name, value: d.value })), [emAndamentoData])
@@ -1032,6 +1042,9 @@ export default function CarteiraObras() {
 												}} />
 												<YAxis yAxisId="left" hide domain={[0, 'dataMax']} />
 												<YAxis yAxisId="right" orientation="right" hide domain={[0, 'dataMax']} />
+												{concluidasDividerName ? (
+													<ReferenceLine x={concluidasDividerName} stroke="hsl(var(--border))" strokeDasharray="4 4" strokeOpacity={0.8} />
+												) : null}
 												<Tooltip
 													contentStyle={{ backgroundColor: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: '8px', boxShadow: 'var(--shadow-elegant)' }}
 													formatter={(value, _name, item) => {
@@ -1117,6 +1130,9 @@ export default function CarteiraObras() {
 												}} />
 												<YAxis yAxisId="left" hide domain={[0, 'dataMax']} />
 												<YAxis yAxisId="right" orientation="right" hide domain={[0, 'dataMax']} />
+												{paradasDividerName ? (
+													<ReferenceLine x={paradasDividerName} stroke="hsl(var(--border))" strokeDasharray="4 4" strokeOpacity={0.8} />
+												) : null}
 												<Tooltip
 													contentStyle={{ backgroundColor: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: '8px', boxShadow: 'var(--shadow-elegant)' }}
 													formatter={(value, _name, item) => {
