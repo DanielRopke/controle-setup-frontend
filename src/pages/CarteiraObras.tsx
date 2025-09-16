@@ -1,6 +1,6 @@
 // Página: Carteira de Obras
 // Layout baseado em PrazosSAP, sem chamadas à API e sem dados (apenas estrutura visual)
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useRef, useMemo } from 'react';
 import ContextMenu from '../components/ContextMenu';
 import { useNavigate } from 'react-router-dom';
 import { Button } from "../components/ui/button";
@@ -11,6 +11,7 @@ import { ChartContainer } from "../components/ui/chart";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, LabelList } from 'recharts';
 import { DateRangeFilter } from '../components/DateRangeFilter';
 import { PEPSearch } from '../components/PEPSearch';
+import useGoogleSheetCarteira from '../hooks/useGoogleSheetCarteira';
 import { cn } from "../lib/utils";
 import LogoSetup from '../assets/LogoSetup1.png';
 import { FundoAnimado } from '../components/FundoAnimado';
@@ -86,7 +87,7 @@ export default function CarteiraObras() {
 
   const filteredData: { statusENER: typeof statusENER; statusCONC: typeof statusCONC; comparison: typeof comparison; reasons: typeof reasons; matrix: Array<{ pep?: string; prazo?: string; dataConclusao?: string; status?: string; rs?: number }>; } = { statusENER, statusCONC, comparison, reasons, matrix: [] };
 
-  const statusENERRef = useRef<HTMLDivElement>(null);
+  const emAndamentoRef = useRef<HTMLDivElement>(null);
   const comparisonRef = useRef<HTMLDivElement>(null);
   const statusCONCRef = useRef<HTMLDivElement>(null);
   const reasonsRef = useRef<HTMLDivElement>(null);
@@ -95,6 +96,7 @@ export default function CarteiraObras() {
   // scrollToRow intentionally removed in layout-only page
 
   const numberFmt2 = React.useMemo(() => new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }), []);
+  const currencyFmt = React.useMemo(() => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }), []);
   const formatValorShort = (n: number) => {
     const abs = Math.abs(n);
     if (abs >= 1_000_000) return `${numberFmt2.format(n / 1_000_000)} Mi`;
@@ -116,6 +118,29 @@ export default function CarteiraObras() {
       console.error('Erro ao capturar gráfico:', error);
     }
   };
+
+  // Hook: carregar dados da planilha (CarteiraObras)
+  const { matriz } = useGoogleSheetCarteira('1wj3AZ5__Ak8THPHu-Lr1iGU-7l9fX8sf6MVY-kBMFhI');
+
+  // Dados para o gráfico "Em Andamento": filtrar por statusAgrupado === 'Em Andamento', agrupar por statusFim
+  const emAndamentoData = useMemo(() => {
+    if (!matriz || matriz.length === 0) return [] as Array<{ name: string; pepCount: number; valor: number }>
+    const map = new Map<string, { pepSet: Set<string>; valor: number }>()
+    matriz.forEach((r, idx) => {
+      const grouped = String(r.statusAgrupado || '').trim().toLowerCase()
+      if (grouped !== 'em andamento') return
+      const statusFim = String(r.statusFim || 'Sem Status').trim() || 'Sem Status'
+      const pepKey = String(r.pep || '').trim() || `__row_${idx}`
+      const cur = map.get(statusFim) || { pepSet: new Set<string>(), valor: 0 }
+      cur.pepSet.add(pepKey)
+      cur.valor = (cur.valor || 0) + (Number(r.valor) || 0)
+      map.set(statusFim, cur)
+    })
+    const out: Array<{ name: string; pepCount: number; valor: number }> = []
+    for (const [name, v] of map.entries()) out.push({ name, pepCount: v.pepSet.size, valor: Math.round(v.valor || 0) })
+    out.sort((a, b) => b.pepCount - a.pepCount)
+    return out
+  }, [matriz])
 
   // helper left intentionally for future wiring
   // formatarValorRS reserved for future wiring
@@ -201,30 +226,34 @@ export default function CarteiraObras() {
         <main className="flex-1 w-full px-2 pt-0 pb-2 sm:px-4 lg:px-6 sm:pb-4 lg:pb-6 lg:ml-64">
           <div className="lg:h-[calc(100vh-8rem)] lg:min-h-[500px] lg:max-h-[calc(100vh-8rem)] mb-8">
             <div className="grid grid-cols-1 gap-3 lg:grid-cols-2 lg:gap-3 lg:h-full lg:grid-rows-2">
-              <Card className="shadow-card hover:shadow-card-hover bg-white border-gray-200 transform transition-all duration-300 hover:scale-[1.02] overflow-hidden" ref={statusENERRef} tabIndex={0}>
+              <Card className="shadow-card hover:shadow-card-hover bg-white border-gray-200 transform transition-all duration-300 hover:scale-[1.02] overflow-hidden" ref={emAndamentoRef} tabIndex={0}>
                 <CardHeader className="flex flex-row items-center justify-between bg-white border-b border-gray-300 rounded-t-xl">
-                  <CardTitle className="text-lg font-semibold text-secondary-foreground">Status ENER</CardTitle>
-                  <Button size="sm" onClick={() => copyChartImage(statusENERRef, 'Status ENER')} className="w-8 h-8 p-0 text-gray-700 transition-all duration-200 bg-white border border-gray-300 shadow-md rounded-xl hover:bg-gray-50 hover:shadow-lg focus:outline-none focus:ring-0 ring-0" title="Copiar imagem (ou clique no gráfico e Ctrl+C)"><Copy className="w-4 h-4" /></Button>
+                  <CardTitle className="text-lg font-semibold text-secondary-foreground">Em Andamento</CardTitle>
+                  <Button size="sm" onClick={() => copyChartImage(emAndamentoRef, 'Em Andamento')} className="w-8 h-8 p-0 text-gray-700 transition-all duration-200 bg-white border border-gray-300 shadow-md rounded-xl hover:bg-gray-50 hover:shadow-lg focus:outline-none focus:ring-0 ring-0" title="Copiar imagem (ou clique no gráfico e Ctrl+C)"><Copy className="w-4 h-4" /></Button>
                 </CardHeader>
                 <CardContent className="p-4">
                   <ChartContainer config={{ value: { label: "Valor (R$)", color: "hsl(var(--primary))" } }} className="h-64 sm:h-72 md:h-80 lg:h-[calc((100vh-20rem)/2)] lg:max-h-[350px] w-full">
                     <ResponsiveContainer width="100%" height="100%">
-                      <BarChart data={filteredData.statusENER} margin={{ top: 20, right: 15, bottom: 50, left: 15 }}>
+                      <BarChart data={emAndamentoData} margin={{ top: 20, right: 20, bottom: 50, left: 20 }} barGap={8} barCategoryGap={16}>
                         <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                        <XAxis dataKey="name" fontSize={12} tickMargin={8} tick={(props: unknown) => {
-                          const p = props as ChartTickProps; const value = p && p.payload ? p.payload.value : '';
-                          return (<g transform={`translate(${p.x},${p.y})`} style={{ cursor: 'pointer' }} onClick={() => handleChartClick('statusENER', String(value))}><text x={0} y={0} dy={16} textAnchor="middle" fontSize={12} fill="currentColor">{String(value)}</text></g>);
+                        <XAxis dataKey="name" fontSize={12} tickMargin={8} tick={(props: unknown) => { const p = props as ChartTickProps; const value = p && p.payload ? p.payload.value : ''; return (<g transform={`translate(${p.x},${p.y})`} style={{ cursor: 'pointer' }} onClick={() => handleChartClick('statusENER', String(value))}><text x={0} y={0} dy={16} textAnchor="middle" fontSize={12} fill="currentColor">{String(value)}</text></g>); }} />
+                        <YAxis yAxisId="left" fontSize={12} />
+                        <YAxis yAxisId="right" orientation="right" fontSize={12} />
+                        <Tooltip contentStyle={{ backgroundColor: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: '8px', boxShadow: 'var(--shadow-elegant)' }} formatter={(value: number | string, name?: string | number) => {
+                          if (String(name) === 'valor') return [currencyFmt.format(Number(value) || 0), 'R$']
+                          return [(Number(value) || 0).toLocaleString('pt-BR'), 'PEP']
                         }} />
-                        <YAxis fontSize={12} />
-                        <Tooltip contentStyle={{ backgroundColor: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: '8px', boxShadow: 'var(--shadow-elegant)' }} formatter={(value: number) => [value.toLocaleString('pt-BR'), 'Qtd']} />
-                        <Bar dataKey="qtd" fill="url(#chartGradient)" radius={[8, 8, 0, 0]} style={{ cursor: 'pointer' }}>
-                          {filteredData.statusENER.map((entry, index) => (
-                            <Cell key={`cell-${index}`} fill={activeFilters['statusENER'] === entry.name ? "hsl(var(--primary))" : "url(#chartGradient)"} />
-                          ))}
-                          <LabelList dataKey="qtd" content={() => null} />
+                        <Bar yAxisId="left" dataKey="pepCount" fill="url(#chartGradientPep)" radius={[8, 8, 0, 0]} style={{ cursor: 'pointer' }}>
+                          {emAndamentoData.map((entry, index) => (<Cell key={`cell-pep-${index}`} fill={activeFilters['statusENER'] === entry.name ? "hsl(var(--primary))" : "url(#chartGradientPep)"} />))}
+                          <LabelList dataKey="pepCount" content={() => null} />
+                        </Bar>
+                        <Bar yAxisId="right" dataKey="valor" fill="url(#chartGradientValor)" radius={[8, 8, 0, 0]} style={{ cursor: 'pointer' }}>
+                          {emAndamentoData.map((_, index) => (<Cell key={`cell-valor-${index}`} fill={"url(#chartGradientValor)"} />))}
+                          <LabelList dataKey="valor" content={() => null} />
                         </Bar>
                         <defs>
-                          <linearGradient id="chartGradient" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="hsl(142 90% 45%)" /><stop offset="50%" stopColor="hsl(142 85% 42%)" /><stop offset="100%" stopColor="hsl(142 76% 36%)" /></linearGradient>
+                          <linearGradient id="chartGradientPep" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="hsl(142 90% 45%)" /><stop offset="50%" stopColor="hsl(142 85% 42%)" /><stop offset="100%" stopColor="hsl(142 76% 36%)" /></linearGradient>
+                          <linearGradient id="chartGradientValor" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#3b82f6" /><stop offset="50%" stopColor="#1d4ed8" /><stop offset="100%" stopColor="#1e3a8a" /></linearGradient>
                         </defs>
                       </BarChart>
                     </ResponsiveContainer>
