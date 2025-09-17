@@ -280,6 +280,14 @@ export default function CarteiraObras() {
 		return `R$ ${numberFmt2.format(n)}`;
 	};
 
+	// Formatação por extenso para o indicador (Mil / Milhões)
+	const formatMilExtenso = React.useCallback((n: number) => {
+		const abs = Math.abs(n);
+		if (abs >= 1_000_000) return `${numberFmt2.format(n / 1_000_000)} Milhões`;
+		if (abs >= 1_000) return `${numberFmt2.format(n / 1_000)} Mil`;
+		return `R$ ${numberFmt2.format(n)}`;
+	}, [numberFmt2]);
+
   // (removido empilhamento/escala dos gráficos de Concluídas/Paradas)
 
 	// Parsing de moeda robusto (aceita formatos BR e US; remove ruídos)
@@ -657,6 +665,22 @@ export default function CarteiraObras() {
 	const paradasData = React.useMemo(() => groupByStatusFim(rowsForCharts, 'Parada'), [rowsForCharts, groupByStatusFim])
 	const paradasQty = React.useMemo(() => paradasData.map(d => ({ name: d.name, qtd: d.qtd })), [paradasData])
 	const paradasValue = React.useMemo(() => paradasData.map(d => ({ name: d.name, value: d.value })), [paradasData])
+
+	// Indicadores para as categorias de referência: "Comissionado" (Concluídas) e "Cancelada" (Paradas)
+	const concluidasIndic = React.useMemo(() => {
+		const nrm = (s: string) => normalize(s)
+		return concluidasData.find(d => {
+			const nm = nrm(d.name)
+			return nm.includes('comission') || nm.includes('comiss')
+		})
+	}, [concluidasData, normalize])
+	const paradasIndic = React.useMemo(() => {
+		const nrm = (s: string) => normalize(s)
+		return paradasData.find(d => {
+			const nm = nrm(d.name)
+			return nm.includes('cancelad')
+		})
+	}, [paradasData, normalize])
 	// Dados para Seccionais (dual-axis: PEP / Valor)
 	const seccionaisQty = React.useMemo(() => filteredData.comparison.map(d => ({ name: d.name, qtd: d.qtd })), [filteredData.comparison])
 	const seccionaisValue = React.useMemo(() => filteredData.comparison.map(d => ({ name: d.name, value: d.value })), [filteredData.comparison])
@@ -1188,6 +1212,19 @@ export default function CarteiraObras() {
 											</BarChart>
 										</ResponsiveContainer>
 									</ChartContainer>
+									{concluidasIndic ? (
+										<div className="mt-2 px-2 text-sm text-gray-700 flex items-center gap-4 flex-wrap">
+											<span className="font-medium">{concluidasIndic.name}:</span>
+											<span className="flex items-center gap-2">
+												<span className="inline-block w-2.5 h-2.5 rounded-full" style={{ background: 'linear-gradient(180deg, hsl(142 90% 45%), hsl(142 76% 36%))' }} />
+												<span className="tabular-nums">{concluidasIndic.qtd.toLocaleString('pt-BR')} PEP</span>
+											</span>
+											<span className="flex items-center gap-2">
+												<span className="inline-block w-2.5 h-2.5 rounded-full" style={{ background: 'linear-gradient(180deg, #3b82f6, #1e3a8a)' }} />
+												<span className="tabular-nums">{formatMilExtenso(concluidasIndic.value)}</span>
+											</span>
+										</div>
+									) : null}
 								</CardContent>
 							</Card>
 
@@ -1274,6 +1311,19 @@ export default function CarteiraObras() {
 											</BarChart>
 										</ResponsiveContainer>
 									</ChartContainer>
+								{paradasIndic ? (
+									<div className="mt-2 px-2 text-sm text-gray-700 flex items-center gap-4 flex-wrap">
+										<span className="font-medium">{paradasIndic.name}:</span>
+										<span className="flex items-center gap-2">
+											<span className="inline-block w-2.5 h-2.5 rounded-full" style={{ background: 'linear-gradient(180deg, hsl(142 90% 45%), hsl(142 76% 36%))' }} />
+											<span className="tabular-nums">{paradasIndic.qtd.toLocaleString('pt-BR')} PEP</span>
+										</span>
+										<span className="flex items-center gap-2">
+											<span className="inline-block w-2.5 h-2.5 rounded-full" style={{ background: 'linear-gradient(180deg, #3b82f6, #1e3a8a)' }} />
+											<span className="tabular-nums">{formatMilExtenso(paradasIndic.value)}</span>
+										</span>
+									</div>
+								) : null}
 								</CardContent>
 							</Card>
 
@@ -1361,7 +1411,7 @@ export default function CarteiraObras() {
 						</div>
 					</div>
 
-						<Card className="shadow-card hover:shadow-card-hover bg-white border-gray-200 transition-all duration-300">
+						<Card className="transition-all duration-300 bg-white border-gray-200 shadow-card hover:shadow-card-hover">
 						<CardHeader className="flex flex-row items-center justify-between bg-white border-b border-gray-300 rounded-t-xl">
 							<CardTitle className="text-lg font-semibold text-secondary-foreground">Matriz da Carteira de Obras</CardTitle>
 							<Button
@@ -1525,12 +1575,12 @@ export default function CarteiraObras() {
 		/>
 		{/* Runtime error overlay */}
 		{runtimeError ? (
-			<div className="fixed inset-0 z-80 flex items-center justify-center bg-black/60 p-4">
-				<div className="max-w-2xl w-full bg-white rounded-lg shadow-lg p-6">
-					<h2 className="text-lg font-semibold mb-2">Erro na página Carteira de Obras</h2>
-					<p className="text-sm text-gray-700 mb-4">{runtimeError}</p>
+			<div className="fixed inset-0 flex items-center justify-center p-4 z-80 bg-black/60">
+				<div className="w-full max-w-2xl p-6 bg-white rounded-lg shadow-lg">
+					<h2 className="mb-2 text-lg font-semibold">Erro na página Carteira de Obras</h2>
+					<p className="mb-4 text-sm text-gray-700">{runtimeError}</p>
 					<div className="text-right">
-						<button className="px-4 py-2 bg-green-600 text-white rounded" onClick={() => setRuntimeError(null)}>Fechar</button>
+						<button className="px-4 py-2 text-white bg-green-600 rounded" onClick={() => setRuntimeError(null)}>Fechar</button>
 					</div>
 				</div>
 			</div>
