@@ -1213,7 +1213,7 @@ export default function CarteiraObras() {
 										</ResponsiveContainer>
 									</ChartContainer>
 									{concluidasIndic ? (
-										<div className="mt-2 px-2 text-sm text-gray-700 flex items-center gap-4 flex-wrap">
+										<div className="mt-2 px-2 text-sm text-gray-700 w-full flex items-center justify-center gap-4 flex-wrap">
 											<span className="font-medium">{concluidasIndic.name}:</span>
 											<span className="flex items-center gap-2">
 												<span className="inline-block w-2.5 h-2.5 rounded-full" style={{ background: 'linear-gradient(180deg, hsl(142 90% 45%), hsl(142 76% 36%))' }} />
@@ -1312,7 +1312,7 @@ export default function CarteiraObras() {
 										</ResponsiveContainer>
 									</ChartContainer>
 								{paradasIndic ? (
-									<div className="mt-2 px-2 text-sm text-gray-700 flex items-center gap-4 flex-wrap">
+									<div className="mt-2 px-2 text-sm text-gray-700 w-full flex items-center justify-center gap-4 flex-wrap">
 										<span className="font-medium">{paradasIndic.name}:</span>
 										<span className="flex items-center gap-2">
 											<span className="inline-block w-2.5 h-2.5 rounded-full" style={{ background: 'linear-gradient(180deg, hsl(142 90% 45%), hsl(142 76% 36%))' }} />
