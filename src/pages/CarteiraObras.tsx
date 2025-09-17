@@ -1361,7 +1361,7 @@ export default function CarteiraObras() {
 						</div>
 					</div>
 
-					<Card className="shadow-card hover:shadow-card-hover bg-white border-gray-200 transform transition-all duration-300 hover:scale-[1.01]">
+						<Card className="shadow-card hover:shadow-card-hover bg-white border-gray-200 transition-all duration-300">
 						<CardHeader className="flex flex-row items-center justify-between bg-white border-b border-gray-300 rounded-t-xl">
 							<CardTitle className="text-lg font-semibold text-secondary-foreground">Matriz da Carteira de Obras</CardTitle>
 							<Button
@@ -1410,15 +1410,10 @@ export default function CarteiraObras() {
 												data-row-index={index}
 												key={index}
 												className={cn(
-													"cursor-pointer select-none transition-colors duration-150",
-													// Selecionada: mesma sensação do Prazos (fundo verde claro e hover em verde um pouco mais forte)
+													"cursor-pointer transition-all duration-200 select-none",
 													(Array.isArray(selectedMatrixRows) && selectedMatrixRows.includes(row.pep))
-														? "bg-green-50 border-l-4 border-l-green-600 hover:bg-green-100"
-														: cn(
-															// Linhas alternadas em verde claro (como na TabelaMatriz)
-															index % 2 === 0 ? 'bg-green-50' : '',
-															'hover:bg-green-100'
-														)
+														? "bg-green-50 border-l-4 border-l-green-600 shadow-md hover:bg-green-100"
+														: "hover:bg-gray-50"
 												)}
 												onClick={(e: React.MouseEvent) => {
 												// Shift+click => range select (preserva seleção existente fora do intervalo)
