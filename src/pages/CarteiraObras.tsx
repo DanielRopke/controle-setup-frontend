@@ -916,35 +916,52 @@ export default function CarteiraObras() {
 		return str;
 	}, []);
 
-	// Copiar imagem
+	// Copiar imagem para a área de transferência (Clipboard API)
 	const copyChartImage = async (chartRef: React.RefObject<HTMLDivElement | null>, chartName: string) => {
 		if (!chartRef.current) return;
 		try {
 			const canvas = await html2canvas(chartRef.current, { backgroundColor: '#ffffff', scale: 2, useCORS: true, allowTaint: true });
-			canvas.toBlob((blob) => {
-					if (blob) {
-						try {
-							// Fallback seguro: gerar URL e forçar download da imagem
-							const url = URL.createObjectURL(blob)
-							const a = document.createElement('a')
-							a.href = url
-							a.download = `grafico-${String(chartName).replace(/\s+/g, '_')}.png`
-							document.body.appendChild(a)
-							a.click()
-							a.remove()
-							URL.revokeObjectURL(url)
-							showToast(`Imagem do gráfico ${chartName} baixada (fallback)`)
-						} catch (e) {
-							console.error('Erro ao tentar salvar imagem', e)
-							showToast(`Erro ao copiar imagem do gráfico ${chartName}`)
+			canvas.toBlob(async (blob) => {
+				if (!blob) {
+					showToast(`Erro ao gerar imagem do gráfico ${chartName}`);
+					return;
+				}
+				try {
+					if (navigator.clipboard) {
+						const item = createClipboardItem(blob);
+						if (item) {
+							await navigator.clipboard.write([item]);
+							showToast(`Imagem do gráfico ${chartName} Copiada`);
+						} else {
+							showToast(`Não foi possível copiar: recurso não suportado no navegador`);
 						}
+					} else {
+						showToast(`Não foi possível copiar: recurso não suportado no navegador`);
 					}
+				} catch (e) {
+					console.error('Erro ao copiar imagem para clipboard:', e);
+					showToast(`Erro ao copiar imagem do gráfico ${chartName}`);
+				}
 			});
 		} catch (error) {
 			console.error('Erro ao capturar gráfico:', error);
 			showToast(`Erro ao copiar imagem do gráfico ${chartName}`);
 		}
 	};
+
+	// Helper para criar um ClipboardItem de forma compatível com browsers
+	function createClipboardItem(blob: Blob): ClipboardItem | null {
+		try {
+			const win: any = window;
+			const Ctor = win.ClipboardItem || win.clipboardItem || null;
+					if (typeof Ctor === 'function') {
+						return new Ctor({ [blob.type]: blob });
+					}
+		} catch (e) {
+			console.warn('ClipboardItem não disponível:', e);
+		}
+		return null;
+	}
 
 	// Exportar Excel
 		const handleExportExcel = () => {
