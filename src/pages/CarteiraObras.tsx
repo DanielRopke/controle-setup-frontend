@@ -44,41 +44,39 @@ type ChartTickProps = { x?: number; y?: number; payload?: { value?: string } };
 
 // Tick horizontal com quebra em até 2 linhas
 const TwoLineTick: React.FC<ChartTickProps> = ({ x = 0, y = 0, payload }) => {
-	const raw = String(payload?.value ?? '');
-	const maxChars = 12;
-	const normalizeSpace = (s: string) => s.replace(/\s+/g, ' ').trim();
-	let line1 = raw;
-	let line2 = '';
-	if (raw.length > maxChars) {
-		const words = normalizeSpace(raw).split(' ');
-		// Montar line1 até atingir ~maxChars e deixar o resto na line2
-		let cur = '';
-	const rest: string[] = [];
-		for (const w of words) {
-			if ((cur + (cur ? ' ' : '') + w).length <= maxChars) {
-				cur = cur ? cur + ' ' + w : w;
-			} else {
-				rest.push(w);
-			}
-		}
-		// Se cur ficou vazio (palavra única muito grande), quebra por meio
-		if (!cur) {
-			const half = Math.ceil(raw.length / 2);
-			line1 = raw.slice(0, half);
-			line2 = raw.slice(half);
-		} else {
-			line1 = cur;
-			line2 = rest.join(' ');
-		}
-	}
-	return (
-		<g transform={`translate(${x},${y})`}>
-			<text x={0} y={0} dy={14} textAnchor="middle" fontSize={12} fill="currentColor">
-				<tspan x={0} dy={0}>{line1}</tspan>
-				{line2 ? <tspan x={0} dy={14}>{line2}</tspan> : null}
-			</text>
-		</g>
-	);
+  const raw = String(payload?.value ?? '');
+  const maxChars = 12;
+  const normalizeSpace = (s: string) => s.replace(/\s+/g, ' ').trim();
+  let line1 = raw;
+  let line2 = '';
+  if (raw.length > maxChars) {
+    const words = normalizeSpace(raw).split(' ');
+    let cur = '';
+    const rest: string[] = [];
+    for (const w of words) {
+      if ((cur + (cur ? ' ' : '') + w).length <= maxChars) {
+        cur = cur ? cur + ' ' + w : w;
+      } else {
+        rest.push(w);
+      }
+    }
+    if (!cur) {
+      const half = Math.ceil(raw.length / 2);
+      line1 = raw.slice(0, half);
+      line2 = raw.slice(half);
+    } else {
+      line1 = cur;
+      line2 = rest.join(' ');
+    }
+  }
+  return (
+    <g transform={`translate(${x},${y})`}>
+      <text x={0} y={0} dy={14} textAnchor="middle" fontSize={12} fill="currentColor">
+        <tspan x={0} dy={0}>{line1}</tspan>
+        {line2 ? <tspan x={0} dy={14}>{line2}</tspan> : null}
+      </text>
+    </g>
+  );
 };
 
 export default function CarteiraObras() {
@@ -273,11 +271,12 @@ export default function CarteiraObras() {
 
 	// Formatação de valores curtos com 2 casas decimais e sufixos Mi/Mil
 	const numberFmt2 = React.useMemo(() => new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }), []);
+	const numberFmt1 = React.useMemo(() => new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 }), []);
 	const formatValorShort = (n: number) => {
 		const abs = Math.abs(n);
-		if (abs >= 1_000_000) return `${numberFmt2.format(n / 1_000_000)} Mi`;
-		if (abs >= 1_000) return `${numberFmt2.format(n / 1_000)} Mil`;
-		return numberFmt2.format(n);
+		if (abs >= 1_000_000) return `${numberFmt2.format(n / 1_000_000)} MI`;
+		if (abs >= 1_000) return `${numberFmt1.format(n / 1_000)} Mil`;
+		return `R$ ${numberFmt2.format(n)}`;
 	};
 
 	// Parsing de moeda robusto (aceita formatos BR e US; remove ruídos)
@@ -347,7 +346,7 @@ export default function CarteiraObras() {
 		const v = (obj as Record<string, unknown>)[key]
 		if (v == null) return ''
 		return String(v).trim()
-	}, [])
+	}, [parseMoneyToNumber])
 	const getFieldNumber = React.useCallback((obj: Record<string, unknown> | MatrizItem, key: string) => {
 		if (obj == null) return 0;
 		if (!Object.prototype.hasOwnProperty.call(obj, key)) return 0;
@@ -632,7 +631,7 @@ export default function CarteiraObras() {
 			try { setRuntimeError(String(err || 'Erro desconhecido ao processar dados')) } catch (e) { console.debug('failed to set runtimeError', e) }
 			return { statusENER: [], statusCONC: [], comparison: [], reasons: [], matrix: [] } as DashboardData
 		}
-	}, [rawRows, selectedRegion, activeFilters, pepSearch, sortConfig, statusEnerMap, statusConcMap, reasonsMap, selectedStatusSap, selectedTipo, selectedMes, selectedStartDate, selectedEndDate]);
+	}, [rawRows, selectedRegion, activeFilters, pepSearch, sortConfig, statusEnerMap, statusConcMap, reasonsMap, selectedStatusSap, selectedTipo, selectedMes, selectedStartDate, selectedEndDate, getFieldNumber, getFieldString, normalize]);
 
 	// (helpers moved above)
 
@@ -647,7 +646,7 @@ export default function CarteiraObras() {
 			if (matchStem(it.name)) tail.push(it); else head.push(it);
 		}
 		return [...head, ...tail];
-	}, [rawRows, groupByStatusFim]);
+	}, [rawRows, groupByStatusFim, normalize]);
 	const paradasData = React.useMemo(() => {
 		const arr = groupByStatusFim(rawRows, 'Parada').slice();
 		// mover "Cancelada(s)" para o fim
@@ -658,17 +657,17 @@ export default function CarteiraObras() {
 			if (matchStem(it.name)) tail.push(it); else head.push(it);
 		}
 		return [...head, ...tail];
-	}, [rawRows, groupByStatusFim]);
+	}, [rawRows, groupByStatusFim, normalize]);
 
 	// Nome da primeira coluna "final" (se existir) para desenhar um traço separador
 	const concluidasDividerName = React.useMemo(() => {
 		const idx = concluidasData.findIndex(it => normalize(it.name).includes('comissionad'));
 		return idx > 0 ? concluidasData[idx].name : null;
-	}, [concluidasData]);
+	}, [concluidasData, normalize]);
 	const paradasDividerName = React.useMemo(() => {
 		const idx = paradasData.findIndex(it => normalize(it.name).includes('cancelad'));
 		return idx > 0 ? paradasData[idx].name : null;
-	}, [paradasData]);
+	}, [paradasData, normalize]);
 
 	// Auxiliares tipadas para LabelList (evita uso de `any`)
 	const emAndamentoQty = React.useMemo(() => emAndamentoData.map(d => ({ name: d.name, qtd: d.qtd })), [emAndamentoData])
@@ -820,7 +819,12 @@ export default function CarteiraObras() {
 					}
 				})
 				setRawRows(mapped as MatrizItem[])
-				try { showToast(`Carteira de Obras (backend) Carregado: ${mapped.length} linhas`) } catch (e) { console.debug(e) }
+				try {
+					showToast(`Carteira de Obras (backend) Carregado: ${mapped.length} linhas`)
+					// soma total para conferência
+					const total = mapped.reduce((acc, r) => acc + (typeof r.valor === 'number' ? r.valor : 0), 0);
+					showToast(`Total carregado: R$ ${total.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`)
+				} catch (e) { console.debug(e) }
 			})
 			.catch((err) => {
 				console.error('Erro ao carregar CarteiraObras via backend', err)
@@ -1063,9 +1067,6 @@ export default function CarteiraObras() {
 												}} />
 												<YAxis yAxisId="left" hide domain={[0, 'dataMax']} />
 												<YAxis yAxisId="right" orientation="right" hide domain={[0, 'dataMax']} />
-												{concluidasDividerName ? (
-													<ReferenceLine x={concluidasDividerName} stroke="hsl(var(--border))" strokeDasharray="4 4" strokeOpacity={0.8} />
-												) : null}
 												<Tooltip
 													contentStyle={{ backgroundColor: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: '8px', boxShadow: 'var(--shadow-elegant)' }}
 													formatter={(value, _name, item) => {
@@ -1151,8 +1152,8 @@ export default function CarteiraObras() {
 												}} />
 												<YAxis yAxisId="left" hide domain={[0, 'dataMax']} />
 												<YAxis yAxisId="right" orientation="right" hide domain={[0, 'dataMax']} />
-												{paradasDividerName ? (
-													<ReferenceLine x={paradasDividerName} stroke="hsl(var(--border))" strokeDasharray="4 4" strokeOpacity={0.8} />
+												{concluidasDividerName ? (
+													<ReferenceLine x={concluidasDividerName} stroke="hsl(var(--border))" strokeDasharray="4 4" strokeOpacity={0.8} />
 												) : null}
 												<Tooltip
 													contentStyle={{ backgroundColor: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: '8px', boxShadow: 'var(--shadow-elegant)' }}
@@ -1239,6 +1240,9 @@ export default function CarteiraObras() {
 												}} />
 												<YAxis yAxisId="left" hide domain={[0, 'dataMax']} />
 												<YAxis yAxisId="right" orientation="right" hide domain={[0, 'dataMax']} />
+												{paradasDividerName ? (
+													<ReferenceLine x={paradasDividerName} stroke="hsl(var(--border))" strokeDasharray="4 4" strokeOpacity={0.8} />
+												) : null}
 												<Tooltip
 													contentStyle={{ backgroundColor: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: '8px', boxShadow: 'var(--shadow-elegant)' }}
 													formatter={(value, _name, item) => {
@@ -1524,7 +1528,7 @@ export default function CarteiraObras() {
 														{row.status}
 													</span>
 												</TableCell>
-												<TableCell className="font-semibold">{row.rs.toLocaleString('pt-BR')}</TableCell>
+												<TableCell className="font-semibold">R$ {row.rs.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
 											</TableRow>
 										))}
 									</TableBody>
