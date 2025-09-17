@@ -280,6 +280,39 @@ export default function CarteiraObras() {
 		return numberFmt2.format(n);
 	};
 
+	// Parsing de moeda robusto (aceita formatos BR e US; remove ruídos)
+	const parseMoneyToNumber = React.useCallback((input: unknown): number => {
+		if (typeof input === 'number' && Number.isFinite(input)) return input;
+		const raw = String(input ?? '').trim();
+		if (!raw) return 0;
+		// remove símbolo e caracteres não numéricos relevantes (mantém dígitos, vírgula, ponto e sinal)
+		let s = raw.replace(/R\$|\s|\u00A0/gi, '').replace(/[^0-9,.-]/g, '');
+		const hasComma = s.includes(',');
+		const hasDot = s.includes('.');
+		if (hasComma && hasDot) {
+			// Decide separador decimal pelo último símbolo
+			const lastComma = s.lastIndexOf(',');
+			const lastDot = s.lastIndexOf('.');
+			if (lastComma > lastDot) {
+				// Formato BR: 1.234.567,89 => remove pontos e troca vírgula por ponto
+				s = s.replace(/\./g, '').replace(/,/g, '.');
+			} else {
+				// Formato US: 1,234,567.89 => remove vírgulas
+				s = s.replace(/,/g, '');
+			}
+		} else if (hasComma && !hasDot) {
+			// Provável BR: 123,45
+			s = s.replace(/,/g, '.');
+		} else {
+			// US ou inteiro simples: 1234.56 ou 1234
+			// remove separadores de milhares se houver (vírgula)
+			s = s.replace(/,(?=\d{3}(\D|$))/g, '');
+		}
+		const n = Number.parseFloat(s);
+		return Number.isFinite(n) ? n : 0;
+	}, []);
+// (sem toCents por enquanto; evitamos funções não utilizadas)
+
 	// Renderizador para rótulos de Valor (barra azul) no comparativo
 	const makeValueLabelRenderer = (
 		dataArr: { name: string; value: number }[],
@@ -308,62 +341,22 @@ export default function CarteiraObras() {
 	// Dados calculados
 
 	// Helpers seguros para leitura de campos dinâmicos vindos da planilha (evita uso direto de `any`)
-	const getFieldString = (obj: Record<string, unknown> | MatrizItem, key: string) => {
+	const getFieldString = React.useCallback((obj: Record<string, unknown> | MatrizItem, key: string) => {
 		if (obj == null) return ''
 		if (!Object.prototype.hasOwnProperty.call(obj, key)) return ''
 		const v = (obj as Record<string, unknown>)[key]
 		if (v == null) return ''
 		return String(v).trim()
-	}
-	const getFieldNumber = (obj: Record<string, unknown> | MatrizItem, key: string) => {
-		if (obj == null) return 0
-		if (!Object.prototype.hasOwnProperty.call(obj, key)) return 0
-		const v = (obj as Record<string, unknown>)[key]
-		if (v == null) return 0
-		if (typeof v === 'number') return v
-		const s = String(v).replace(/R\$\s?/, '').replace(/\./g, '').replace(/,/g, '.')
-		const n = Number(parseFloat(s))
-		return Number.isNaN(n) ? 0 : n
-	}
-	const normalize = (s?: string) => String(s || '').normalize('NFD').replace(/\p{Diacritic}/gu, '').trim().toLowerCase();
+	}, [])
+	const getFieldNumber = React.useCallback((obj: Record<string, unknown> | MatrizItem, key: string) => {
+		if (obj == null) return 0;
+		if (!Object.prototype.hasOwnProperty.call(obj, key)) return 0;
+		const v = (obj as Record<string, unknown>)[key];
+		return parseMoneyToNumber(v);
+	}, [parseMoneyToNumber])
+	const normalize = React.useCallback((s?: string) => String(s || '').normalize('NFD').replace(/\p{Diacritic}/gu, '').trim().toLowerCase(), [])
 
-	// Normalizador para registros vindos do backend (chaves como nos cabeçalhos da planilha)
-	const normalizeBackendRows = (rows: unknown[]): MatrizItem[] => {
-		const out: MatrizItem[] = []
-		for (const r of rows as Array<Record<string, unknown>> || []) {
-			const getS = (k: string, alt: string[] = []) => {
-				const all = [k, ...alt]
-				for (const key of all) {
-					if (Object.prototype.hasOwnProperty.call(r, key)) {
-						const v = (r as Record<string, unknown>)[key]
-						if (v != null && String(v).trim() !== '') return String(v).trim()
-					}
-				}
-				return ''
-			}
-			const getN = (k: string, alt: string[] = []) => {
-				const s = getS(k, alt)
-				if (!s) return 0
-				const cleaned = s.replace(/R\$\s?/, '').replace(/\./g, '').replace(/,/g, '.')
-				const n = Number(parseFloat(cleaned))
-				return Number.isNaN(n) ? 0 : n
-			}
-
-			out.push({
-				pep: getS('PEP', ['Pep','pep']),
-				prazo: getS('Data limite', ['DATA LIMITE','Prazo','PRAZO','prazo']),
-				dataConclusao: getS('data prog/conc', ['Data prog/conc','DATA PROG/CONC','Data Conclusão','DATA CONCLUSÃO','dataConclusao','data']),
-				municipio: getS('Municipio', ['Município','MUNICIPIO','municipio']),
-				statusSap: getS('STATUS SAP', ['Status SAP','statusSap','status']),
-				valor: getN('R$', ['Valor (R$)','Valor','valor','RS','rs']),
-				seccional: getS('SECCIONAL', ['Seccional','seccional','Seccao','seccao']),
-				tipo: getS('TIPO', ['Tipo','tipo']),
-				statusFim: getS('STATUS FIM', ['Status Fim','Status fim','statusFim']),
-				statusAgrupado: getS('STATUS AGRUPADO', ['Status Agrupado','Status agrupado','statusAgrupado'])
-			})
-		}
-		return out
-	}
+	// (normalização inline no efeito de carregamento para evitar dependências reativas desnecessárias)
 	const groupByStatusFim = React.useCallback((rows: Array<Record<string, unknown> | MatrizItem>, agrupado: string) => {
 		const norm = (s: string) => normalize(s)
 		const stemMatch = (a: string, b: string) => {
@@ -389,7 +382,7 @@ export default function CarteiraObras() {
 		}
 		const out = Array.from(map.entries()).map(([name, obj]) => ({ name, qtd: obj.pepSet.size, value: Math.round(obj.value || 0) }))
 		return out.sort((a,b) => b.qtd - a.qtd)
-	}, [])
+	}, [normalize, getFieldString, getFieldNumber])
 	const filteredData = React.useMemo(() => {
 		try {
 			// original logic below
@@ -560,14 +553,14 @@ export default function CarteiraObras() {
 			return arr.sort((a, b) => b.qtd - a.qtd);
 		};
 
-		const statusENER = hasEner ? (function() { const m = new Map<string, { valor: number; qtd: number }>(); for (const r of rowsForOthers) { const k = (r.statusEner || '').trim(); if (!k) continue; const v = typeof r.valor === 'number' ? r.valor : parseFloat(String(r.valor || '0').replace(/R\$\s?/, '').replace(/\./g, '').replace(/,/g, '.')) || 0; const cur = m.get(k) || { valor: 0, qtd: 0 }; m.set(k, { valor: cur.valor + v, qtd: cur.qtd + 1 }); } return Array.from(m.entries()).map(([name, obj]) => ({ name, value: obj.valor, qtd: obj.qtd })).sort((a, b) => b.qtd - a.qtd); })() : sumFromMap(statusEnerMap);
-		const statusCONC = hasConc ? (function() { const m = new Map<string, { valor: number; qtd: number }>(); for (const r of rowsForOthers) { const k = (r.statusConc || '').trim(); if (!k) continue; const v = typeof r.valor === 'number' ? r.valor : parseFloat(String(r.valor || '0').replace(/R\$\s?/, '').replace(/\./g, '').replace(/,/g, '.')) || 0; const cur = m.get(k) || { valor: 0, qtd: 0 }; m.set(k, { valor: cur.valor + v, qtd: cur.qtd + 1 }); } return Array.from(m.entries()).map(([name, obj]) => ({ name, value: obj.valor, qtd: obj.qtd })).sort((a, b) => b.qtd - a.qtd); })() : sumFromMap(statusConcMap);
-		const reasons = hasMotivos ? (function() { const m = new Map<string, { valor: number; qtd: number }>(); for (const r of rowsForOthers) { const k = (r.statusServico || '').trim(); if (!k) continue; const v = typeof r.valor === 'number' ? r.valor : parseFloat(String(r.valor || '0').replace(/R\$\s?/, '').replace(/\./g, '').replace(/,/g, '.')) || 0; const cur = m.get(k) || { valor: 0, qtd: 0 }; m.set(k, { valor: cur.valor + v, qtd: cur.qtd + 1 }); } return Array.from(m.entries()).map(([name, obj]) => ({ name, value: obj.valor, qtd: obj.qtd })).sort((a, b) => b.qtd - a.qtd); })() : sumFromMap(reasonsMap);
-		const comparison = (function() { const m = new Map<string, { valor: number; qtd: number }>(); for (const r of rowsForComparison) { const s = (r.seccional || '').trim(); if (!s) continue; const v = typeof r.valor === 'number' ? r.valor : parseFloat(String(r.valor || '0').replace(/R\$\s?/, '').replace(/\./g, '').replace(/,/g, '.')) || 0; const cur = m.get(s) || { valor: 0, qtd: 0 }; m.set(s, { valor: cur.valor + v, qtd: cur.qtd + 1 }); } return Array.from(m.entries()).map(([name, obj]) => ({ name, value: obj.valor, qtd: obj.qtd })).sort((a, b) => b.qtd - a.qtd); })();
+		const statusENER = hasEner ? (function() { const m = new Map<string, { valor: number; qtd: number }>(); for (const r of rowsForOthers) { const k = (r.statusEner || '').trim(); if (!k) continue; const v = getFieldNumber(r, 'valor'); const cur = m.get(k) || { valor: 0, qtd: 0 }; m.set(k, { valor: cur.valor + v, qtd: cur.qtd + 1 }); } return Array.from(m.entries()).map(([name, obj]) => ({ name, value: obj.valor, qtd: obj.qtd })).sort((a, b) => b.qtd - a.qtd); })() : sumFromMap(statusEnerMap);
+		const statusCONC = hasConc ? (function() { const m = new Map<string, { valor: number; qtd: number }>(); for (const r of rowsForOthers) { const k = (r.statusConc || '').trim(); if (!k) continue; const v = getFieldNumber(r, 'valor'); const cur = m.get(k) || { valor: 0, qtd: 0 }; m.set(k, { valor: cur.valor + v, qtd: cur.qtd + 1 }); } return Array.from(m.entries()).map(([name, obj]) => ({ name, value: obj.valor, qtd: obj.qtd })).sort((a, b) => b.qtd - a.qtd); })() : sumFromMap(statusConcMap);
+		const reasons = hasMotivos ? (function() { const m = new Map<string, { valor: number; qtd: number }>(); for (const r of rowsForOthers) { const k = (r.statusServico || '').trim(); if (!k) continue; const v = getFieldNumber(r, 'valor'); const cur = m.get(k) || { valor: 0, qtd: 0 }; m.set(k, { valor: cur.valor + v, qtd: cur.qtd + 1 }); } return Array.from(m.entries()).map(([name, obj]) => ({ name, value: obj.valor, qtd: obj.qtd })).sort((a, b) => b.qtd - a.qtd); })() : sumFromMap(reasonsMap);
+		const comparison = (function() { const m = new Map<string, { valor: number; qtd: number }>(); for (const r of rowsForComparison) { const s = (r.seccional || '').trim(); if (!s) continue; const v = getFieldNumber(r, 'valor'); const cur = m.get(s) || { valor: 0, qtd: 0 }; m.set(s, { valor: cur.valor + v, qtd: cur.qtd + 1 }); } return Array.from(m.entries()).map(([name, obj]) => ({ name, value: obj.valor, qtd: obj.qtd })).sort((a, b) => b.qtd - a.qtd); })();
 
 		// 3) Linhas da matriz (após filtros), com sort
 		let tableRows: DashboardData['matrix'] = rowsForOthers.map(r => {
-			const valorNum = typeof r.valor === 'number' ? r.valor : parseFloat(String(r.valor || '0').replace(/R\$\s?/, '').replace(/\./g, '').replace(/,/g, '.')) || 0;
+			const valorNum = getFieldNumber(r, 'valor');
 			return {
 				pep: String(r.pep || ''),
 				dataLimite: String(r.prazo || ''),
@@ -766,12 +759,12 @@ export default function CarteiraObras() {
 		for (const r of rawRows) {
 			const s = (r.seccional || '').trim();
 			if (!s) continue;
-			const v = typeof r.valor === 'number' ? r.valor : parseFloat(String(r.valor || '0').replace(/R\$\s?/, '').replace(/\./g, '').replace(/,/g, '.')) || 0;
+			const v = getFieldNumber(r, 'valor');
 			m.set(s, (m.get(s) || 0) + v);
 		}
 		const regionList = Array.from(m.entries()).sort((a, b) => b[1] - a[1]).map(([name]) => name);
 		setRegions(regionList);
-	}, [rawRows]);
+	}, [rawRows, getFieldNumber]);
 
 	// Carregar listas dos filtros (Status SAP, Tipo, Mês) a partir dos dados carregados
 	useEffect(() => {
@@ -800,7 +793,32 @@ export default function CarteiraObras() {
 			.then((res) => {
 				if (cancelled) return
 				const data = (res && (res as { data?: unknown[] }).data) || []
-				const mapped = normalizeBackendRows(Array.isArray(data) ? data : [])
+				const rows = Array.isArray(data) ? data as Array<Record<string, unknown>> : []
+				const mapped: MatrizItem[] = rows.map(r => {
+					const getS = (k: string, alt: string[] = []) => {
+						const all = [k, ...alt];
+						for (const key of all) {
+							if (Object.prototype.hasOwnProperty.call(r, key)) {
+								const v = (r as Record<string, unknown>)[key];
+								if (v != null && String(v).trim() !== '') return String(v).trim();
+							}
+						}
+						return '';
+					};
+					const getN = (k: string, alt: string[] = []) => parseMoneyToNumber(getS(k, alt));
+					return {
+						pep: getS('PEP', ['Pep','pep']),
+						prazo: getS('Data limite', ['DATA LIMITE','Prazo','PRAZO','prazo']),
+						dataConclusao: getS('data prog/conc', ['Data prog/conc','DATA PROG/CONC','Data Conclusão','DATA CONCLUSÃO','dataConclusao','data']),
+						municipio: getS('Municipio', ['Município','MUNICIPIO','municipio']),
+						statusSap: getS('STATUS SAP', ['Status SAP','statusSap','status']),
+						valor: getN('R$', ['Valor (R$)','Valor','valor','RS','rs']),
+						seccional: getS('SECCIONAL', ['Seccional','seccional','Seccao','seccao']),
+						tipo: getS('TIPO', ['Tipo','tipo']),
+						statusFim: getS('STATUS FIM', ['Status Fim','Status fim','statusFim']),
+						statusAgrupado: getS('STATUS AGRUPADO', ['Status Agrupado','Status agrupado','statusAgrupado'])
+					}
+				})
 				setRawRows(mapped as MatrizItem[])
 				try { showToast(`Carteira de Obras (backend) Carregado: ${mapped.length} linhas`) } catch (e) { console.debug(e) }
 			})
@@ -860,7 +878,10 @@ export default function CarteiraObras() {
 		};
 
 	// KPIs devem refletir os filtros atuais sobre as linhas usadas na tabela e outros gráficos (rowsForOthers)
-	const totalValue = React.useMemo(() => filteredData.matrix.reduce((sum, row) => sum + (row.rs || 0), 0), [filteredData.matrix]);
+	const totalValue = React.useMemo(() => {
+		const cents = filteredData.matrix.reduce((sum, row) => sum + Math.round((row.rs || 0) * 100), 0);
+		return cents / 100;
+	}, [filteredData.matrix]);
 	const totalPep = React.useMemo(() => filteredData.matrix.length, [filteredData.matrix.length]);
 
 	return (
