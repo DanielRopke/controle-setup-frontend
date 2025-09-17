@@ -201,18 +201,29 @@ export default function CarteiraObras() {
 		label: string
 	) => {
 		const newFilters = { ...activeFilters };
-		if (newFilters[chartType] === label) {
-			delete newFilters[chartType];
-			console.log(`[TOAST] Filtro removido: ${label}`);
-			// Se for seccional, também sincroniza o botão lateral
-			if (chartType === 'seccionalSelected') {
-				setSelectedRegion('all')
+		// Se for um filtro de STATUS FIM, garantir que apenas um esteja ativo por vez
+		if (chartType === 'statusEmAndamento' || chartType === 'statusConcluida' || chartType === 'statusParada') {
+			// remove os outros dois status fim para tornar a seleção exclusiva
+			delete newFilters.statusEmAndamento;
+			delete newFilters.statusConcluida;
+			delete newFilters.statusParada;
+			// toggle: se já estava selecionado, removemos; caso contrário aplicamos
+			if ((activeFilters as Record<string,string>)[chartType] === label) {
+				// já estava selecionado -> removemos
+				console.log(`[TOAST] Filtro removido: ${label}`);
+			} else {
+				newFilters[chartType] = label;
+				console.log(`[TOAST] Filtro aplicado: ${label}`);
 			}
 		} else {
-			newFilters[chartType] = label;
-			console.log(`[TOAST] Filtro aplicado: ${label}`);
-			if (chartType === 'seccionalSelected') {
-				setSelectedRegion(label)
+			if (newFilters[chartType] === label) {
+				delete newFilters[chartType];
+				console.log(`[TOAST] Filtro removido: ${label}`);
+				if (chartType === 'seccionalSelected') setSelectedRegion('all');
+			} else {
+				newFilters[chartType] = label;
+				console.log(`[TOAST] Filtro aplicado: ${label}`);
+				if (chartType === 'seccionalSelected') setSelectedRegion(label);
 			}
 		}
 		setActiveFilters(newFilters);
@@ -1152,9 +1163,9 @@ export default function CarteiraObras() {
 												/>
 												<Bar yAxisId="left" dataKey="qtd" fill="url(#chartGreenGradientComparison)" radius={[8, 8, 0, 0]}>
 													{emAndamentoData.map((_entry, index) => {
-														const selected = activeFilters.statusEmAndamento;
+														const globalSelected = activeFilters.statusEmAndamento || activeFilters.statusConcluida || activeFilters.statusParada;
 														const name = emAndamentoData[index]?.name || '';
-														const faded = selected && selected !== name;
+														const faded = globalSelected && (activeFilters.statusEmAndamento ? activeFilters.statusEmAndamento !== name : true);
 														return (
 															<Cell key={`cell-${index}`} fill={"url(#chartGreenGradientComparison)"} fillOpacity={faded ? 0.5 : 1} onClick={() => handleChartClick('statusEmAndamento', name)} />
 														)
@@ -1237,9 +1248,9 @@ export default function CarteiraObras() {
 												/>
 												<Bar yAxisId="left" dataKey="qtd" fill="url(#chartGreenGradientComparison)" radius={[8, 8, 0, 0]}>
 													{concluidasChartData.map((_entry, index) => {
-														const selected = activeFilters.statusConcluida;
+														const globalSelected = activeFilters.statusEmAndamento || activeFilters.statusConcluida || activeFilters.statusParada;
 														const name = concluidasChartData[index]?.name || '';
-														const faded = selected && selected !== name;
+														const faded = globalSelected && (activeFilters.statusConcluida ? activeFilters.statusConcluida !== name : true);
 														return (
 															<Cell key={`cell-${index}`} fill={"url(#chartGreenGradientComparison)"} fillOpacity={faded ? 0.5 : 1} onClick={() => handleChartClick('statusConcluida', name)} />
 														)
@@ -1336,9 +1347,9 @@ export default function CarteiraObras() {
 												/>
 												<Bar yAxisId="left" dataKey="qtd" fill="url(#chartGreenGradientConc)" radius={[8, 8, 0, 0]}>
 													{paradasChartData.map((_entry, index) => {
-														const selected = activeFilters.statusParada;
+														const globalSelected = activeFilters.statusEmAndamento || activeFilters.statusConcluida || activeFilters.statusParada;
 														const name = paradasChartData[index]?.name || '';
-														const faded = selected && selected !== name;
+														const faded = globalSelected && (activeFilters.statusParada ? activeFilters.statusParada !== name : true);
 														return (
 															<Cell key={`cell-${index}`} fill={"url(#chartGreenGradientConc)"} fillOpacity={faded ? 0.5 : 1} onClick={() => handleChartClick('statusParada', name)} />
 														)
