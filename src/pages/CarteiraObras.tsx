@@ -89,7 +89,7 @@ export default function CarteiraObras() {
 	const [selectedEndDate, setSelectedEndDate] = useState<Date | undefined>(undefined);
 	const [selectedStatusSap, setSelectedStatusSap] = useState<string>('');
 	const [selectedTipo, setSelectedTipo] = useState<string>('');
-	const [selectedMes, setSelectedMes] = useState<string>('');
+	const [selectedGrouping, setSelectedGrouping] = useState<string>('');
 	const [selectedMatrixRows, setSelectedMatrixRows] = useState<string[]>([]);
 	const [lastSelectedIndex, setLastSelectedIndex] = useState<number | null>(null);
 	// Context menu state
@@ -115,7 +115,7 @@ export default function CarteiraObras() {
 	const [reasonsMap] = useState<Record<string, Record<string, number>>>({});
 	const [statusSapList, setStatusSapList] = useState<string[]>([]);
 	const [tiposList, setTiposList] = useState<string[]>([]);
-	const [mesesList, setMesesList] = useState<string[]>([]);
+	const [agrupamentosList, setAgrupamentosList] = useState<string[]>([]);
 
 	// Título da janela quando nesta página
 	useEffect(() => {
@@ -168,7 +168,7 @@ export default function CarteiraObras() {
 		setPepSearch('');
 		setSelectedStatusSap('');
 		setSelectedTipo('');
-		setSelectedMes('');
+		setSelectedGrouping('');
 		showToast('Filtros limpos!');
 	};
 
@@ -456,12 +456,11 @@ export default function CarteiraObras() {
 				// Aplicar filtros de Status SAP, Tipo, Mês e Faixa de Datas
 				if (selectedStatusSap) rowsForOthers = rowsForOthers.filter(r => (r.statusSap || '').trim() === selectedStatusSap);
 				if (selectedTipo) rowsForOthers = rowsForOthers.filter(r => (r.tipo || '').trim() === selectedTipo);
-				if (selectedMes) {
+				// Filtrar por agrupamento (campo statusAgrupado) se selecionado
+				if (selectedGrouping) {
 					rowsForOthers = rowsForOthers.filter(r => {
-						const v = String(r.dataConclusao || r.prazo || '');
-						const mo = v.match(/\/(\d{1,2})\/(\d{4})$/);
-						const month = mo ? mo[1] : '';
-						return month === selectedMes;
+						const a = String(r.statusAgrupado || '').trim();
+						return a === selectedGrouping;
 					});
 				}
 				if (selectedStartDate || selectedEndDate) {
@@ -506,12 +505,10 @@ export default function CarteiraObras() {
 				// Aplicar também os filtros globais aos dados de comparação (exceto região/comparativo)
 				if (selectedStatusSap) rowsForComparison = rowsForComparison.filter(r => (r.statusSap || '').trim() === selectedStatusSap);
 				if (selectedTipo) rowsForComparison = rowsForComparison.filter(r => (r.tipo || '').trim() === selectedTipo);
-				if (selectedMes) {
+				if (selectedGrouping) {
 					rowsForComparison = rowsForComparison.filter(r => {
-						const v = String(r.dataConclusao || r.prazo || '');
-						const mo = v.match(/\/(\d{1,2})\/(\d{4})$/);
-						const month = mo ? mo[1] : '';
-						return month === selectedMes;
+						const a = String(r.statusAgrupado || '').trim();
+						return a === selectedGrouping;
 					});
 				}
 				if (selectedStartDate || selectedEndDate) {
@@ -644,7 +641,7 @@ export default function CarteiraObras() {
 			try { setRuntimeError(String(err || 'Erro desconhecido ao processar dados')) } catch (e) { console.debug('failed to set runtimeError', e) }
 			return { statusENER: [], statusCONC: [], comparison: [], reasons: [], matrix: [] } as DashboardData
 		}
-	}, [rawRows, selectedRegion, activeFilters, pepSearch, sortConfig, statusEnerMap, statusConcMap, reasonsMap, selectedStatusSap, selectedTipo, selectedMes, selectedStartDate, selectedEndDate, getFieldNumber, getFieldString, normalize]);
+	}, [rawRows, selectedRegion, activeFilters, pepSearch, sortConfig, statusEnerMap, statusConcMap, reasonsMap, selectedStatusSap, selectedTipo, selectedGrouping, selectedStartDate, selectedEndDate, getFieldNumber, getFieldString, normalize]);
 
 	// (helpers moved above)
 
@@ -822,21 +819,19 @@ export default function CarteiraObras() {
 		setRegions(regionList);
 	}, [rawRows, getFieldNumber]);
 
-	// Carregar listas dos filtros (Status SAP, Tipo, Mês) a partir dos dados carregados
+	// Carregar listas dos filtros (Status SAP, Tipo, Grupamento) a partir dos dados carregados
 	useEffect(() => {
 		const status = new Set<string>()
 		const tipos = new Set<string>()
-		const meses = new Set<string>()
+		const agrs = new Set<string>()
 		for (const r of rawRows) {
 			const s = String(r.statusSap || '').trim(); if (s) status.add(s)
 			const t = String(r.tipo || '').trim(); if (t) tipos.add(t)
-			const v = String(r.dataConclusao || r.prazo || '')
-			const mo = v.match(/\/(\d{1,2})\/(\d{4})$/)
-			if (mo) meses.add(String(mo[1]))
+			const a = String(r.statusAgrupado || '').trim(); if (a) agrs.add(a)
 		}
 		setStatusSapList(Array.from(status))
 		setTiposList(Array.from(tipos))
-		setMesesList(Array.from(meses))
+		setAgrupamentosList(Array.from(agrs))
 	}, [rawRows])
 
 
@@ -886,6 +881,29 @@ export default function CarteiraObras() {
 			})
 		return () => { cancelled = true }
 	}, [parseMoneyToNumber])
+
+	// Formata uma string de data para DD/MM/AA (ano com 2 dígitos) caso seja parseável
+	const formatToDDMMYY = React.useCallback((s: string) => {
+		if (!s) return '';
+		const str = String(s).trim();
+		const m = str.match(/^(\d{1,2})\/(\d{1,2})\/(\d{2,4})$/);
+		if (m) {
+			const d = String(m[1]).padStart(2, '0');
+			const mo = String(m[2]).padStart(2, '0');
+			const yy = String(m[3]);
+			const shortYear = yy.length === 4 ? yy.slice(-2) : yy.padStart(2, '0');
+			return `${d}/${mo}/${shortYear}`;
+		}
+		const t = Date.parse(str);
+		if (!Number.isNaN(t)) {
+			const dt = new Date(t);
+			const d = String(dt.getDate()).padStart(2, '0');
+			const mo = String(dt.getMonth() + 1).padStart(2, '0');
+			const yy = String(dt.getFullYear()).slice(-2);
+			return `${d}/${mo}/${yy}`;
+		}
+		return str;
+	}, []);
 
 	// Copiar imagem
 	const copyChartImage = async (chartRef: React.RefObject<HTMLDivElement | null>, chartName: string) => {
@@ -1064,13 +1082,13 @@ export default function CarteiraObras() {
 								))}
 							</select>
 							<select
-								value={selectedMes}
-								onChange={(e) => setSelectedMes(e.target.value)}
-								className={`w-full h-10 px-3 text-sm border rounded-xl shadow-md transition-all duration-200 hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-green-500 ${selectedMes ? 'bg-green-600 text-white border-green-600' : 'bg-white text-gray-900 border-gray-200'}`}
+								value={selectedGrouping}
+								onChange={(e) => setSelectedGrouping(e.target.value)}
+								className={`w-full h-10 px-3 text-sm border rounded-xl shadow-md transition-all duration-200 hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-green-500 ${selectedGrouping ? 'bg-green-600 text-white border-green-600' : 'bg-white text-gray-900 border-gray-200'}`}
 							>
-								<option value="">Mês</option>
-								{mesesList.map((m) => (
-									<option key={m} value={m}>{m}</option>
+								<option value="">Grupamento</option>
+								{agrupamentosList.map((a) => (
+									<option key={a} value={a}>{a}</option>
 								))}
 							</select>
 						</div>
@@ -1477,32 +1495,32 @@ export default function CarteiraObras() {
 								<Table>
 									<TableHeader>
 										<TableRow className="bg-gray-50 hover:bg-gray-100">
-														<TableHead className="font-semibold text-gray-700 transition-colors cursor-pointer select-none hover:bg-gray-200 w-[140px]" onClick={() => handleSort('pep')}>
-															<div className="flex items-center gap-2">PEP {getSortIcon('pep')}</div>
-														</TableHead>
-												<TableHead className="font-semibold text-gray-700 transition-colors cursor-pointer select-none hover:bg-gray-200" onClick={() => handleSort('dataLimite')}>
-													<div className="flex items-center gap-2">Data limite {getSortIcon('dataLimite')}</div>
+													<TableHead className="font-semibold text-gray-700 transition-colors cursor-pointer select-none hover:bg-gray-200 w-[154px] text-center" onClick={() => handleSort('pep')}>
+														<div className="flex items-center justify-center gap-2">PEP {getSortIcon('pep')}</div>
+													</TableHead>
+												<TableHead className="font-semibold text-gray-700 transition-colors cursor-pointer select-none hover:bg-gray-200 text-center" onClick={() => handleSort('dataLimite')}>
+													<div className="flex items-center justify-center gap-2">Limite {getSortIcon('dataLimite')}</div>
 												</TableHead>
-												<TableHead className="font-semibold text-gray-700 transition-colors cursor-pointer select-none hover:bg-gray-200" onClick={() => handleSort('seccional')}>
-													<div className="flex items-center gap-2">SECCIONAL {getSortIcon('seccional')}</div>
+												<TableHead className="font-semibold text-gray-700 transition-colors cursor-pointer select-none hover:bg-gray-200 text-center" onClick={() => handleSort('seccional')}>
+													<div className="flex items-center justify-center gap-2">Seccional {getSortIcon('seccional')}</div>
 												</TableHead>
-												<TableHead className="font-semibold text-gray-700 transition-colors cursor-pointer select-none hover:bg-gray-200" onClick={() => handleSort('municipio')}>
-													<div className="flex items-center gap-2">Municipio {getSortIcon('municipio')}</div>
+												<TableHead className="font-semibold text-gray-700 transition-colors cursor-pointer select-none hover:bg-gray-200 text-center" onClick={() => handleSort('municipio')}>
+													<div className="flex items-center justify-center gap-2">Município {getSortIcon('municipio')}</div>
 												</TableHead>
-												<TableHead className="font-semibold text-gray-700 transition-colors cursor-pointer select-none hover:bg-gray-200" onClick={() => handleSort('dataProgConc')}>
-													<div className="flex items-center gap-2">data prog/conc {getSortIcon('dataProgConc')}</div>
+												<TableHead className="font-semibold text-gray-700 transition-colors cursor-pointer select-none hover:bg-gray-200 text-center" onClick={() => handleSort('dataProgConc')}>
+													<div className="flex items-center justify-center gap-2">Data {getSortIcon('dataProgConc')}</div>
 												</TableHead>
-												<TableHead className="font-semibold text-gray-700 transition-colors cursor-pointer select-none hover:bg-gray-200" onClick={() => handleSort('tipo')}>
-													<div className="flex items-center gap-2">TIPO {getSortIcon('tipo')}</div>
+												<TableHead className="font-semibold text-gray-700 transition-colors cursor-pointer select-none hover:bg-gray-200 text-center" onClick={() => handleSort('tipo')}>
+													<div className="flex items-center justify-center gap-2">Tipo {getSortIcon('tipo')}</div>
 												</TableHead>
-												<TableHead className="font-semibold text-gray-700 transition-colors cursor-pointer select-none hover:bg-gray-200" onClick={() => handleSort('status')}>
-													<div className="flex items-center gap-2">STATUS SAP {getSortIcon('status')}</div>
+												<TableHead className="font-semibold text-gray-700 transition-colors cursor-pointer select-none hover:bg-gray-200 text-center" onClick={() => handleSort('status')}>
+													<div className="flex items-center justify-center gap-2">Status SAP {getSortIcon('status')}</div>
 												</TableHead>
-												<TableHead className="font-semibold text-gray-700 transition-colors cursor-pointer select-none hover:bg-gray-200" onClick={() => handleSort('rs')}>
-													<div className="flex items-center gap-2">R$ {getSortIcon('rs')}</div>
+												<TableHead className="font-semibold text-gray-700 transition-colors cursor-pointer select-none hover:bg-gray-200 text-center" onClick={() => handleSort('rs')}>
+													<div className="flex items-center justify-center gap-2">R$ {getSortIcon('rs')}</div>
 												</TableHead>
-										</TableRow>
-									</TableHeader>
+											</TableRow>
+										</TableHeader>
 									<TableBody>
 										{filteredData.matrix.map((row, index) => (
 											<TableRow
@@ -1593,11 +1611,11 @@ export default function CarteiraObras() {
 											}}
 											title="Ctrl/Cmd+clique para selecionar múltiplas linhas. Clique com o botão direito para abrir menu de copiar"
 											>
-												<TableCell className="font-mono text-sm min-w-[120px]">{row.pep}</TableCell>
-												<TableCell className="text-sm">{row.dataLimite}</TableCell>
+												<TableCell className="font-mono text-sm min-w-[132px]">{row.pep}</TableCell>
+												<TableCell className="text-sm">{formatToDDMMYY(row.dataLimite)}</TableCell>
 												<TableCell className="text-sm">{row.seccional}</TableCell>
 												<TableCell className="text-sm">{row.municipio}</TableCell>
-												<TableCell className="text-sm">{row.dataProgConc}</TableCell>
+												<TableCell className="text-sm">{formatToDDMMYY(row.dataProgConc)}</TableCell>
 												<TableCell className="text-sm">{row.tipo}</TableCell>
 												<TableCell>
 													<span className={`px-3 py-1 rounded-full text-xs font-medium ${row.status === 'Concluído' ? 'bg-green-100 text-green-700 border border-green-300' : 'bg-yellow-100 text-yellow-800 border border-yellow-300'}`}>
