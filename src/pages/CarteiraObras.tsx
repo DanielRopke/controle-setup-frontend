@@ -640,16 +640,23 @@ export default function CarteiraObras() {
 
 	// (helpers moved above)
 
-	const emAndamentoData = React.useMemo(() => groupByStatusFim(rawRows, 'Em Andamento'), [rawRows, groupByStatusFim]);
-  // Dados memorizados por gráfico
-  const emAndamentoQty = React.useMemo(() => emAndamentoData.map(d => ({ name: d.name, qtd: d.qtd })), [emAndamentoData])
-  const emAndamentoValue = React.useMemo(() => emAndamentoData.map(d => ({ name: d.name, value: d.value })), [emAndamentoData])
-  const concluidasData = React.useMemo(() => groupByStatusFim(rawRows, 'Concluída'), [rawRows, groupByStatusFim])
-  const concluidasQty = React.useMemo(() => concluidasData.map(d => ({ name: d.name, qtd: d.qtd })), [concluidasData])
-  const concluidasValue = React.useMemo(() => concluidasData.map(d => ({ name: d.name, value: d.value })), [concluidasData])
-  const paradasData = React.useMemo(() => groupByStatusFim(rawRows, 'Parada'), [rawRows, groupByStatusFim])
-  const paradasQty = React.useMemo(() => paradasData.map(d => ({ name: d.name, qtd: d.qtd })), [paradasData])
-  const paradasValue = React.useMemo(() => paradasData.map(d => ({ name: d.name, value: d.value })), [paradasData])
+	// Filtrar linhas por Seccional selecionada (via sidebar ou clique no gráfico de Seccionais)
+	const rowsForCharts = React.useMemo(() => {
+		const regionFilter = (activeFilters.seccionalSelected || (selectedRegion !== 'all' ? selectedRegion : undefined)) as string | undefined;
+		if (!regionFilter) return rawRows;
+		return rawRows.filter(r => (r.seccional || '').trim() === regionFilter);
+	}, [rawRows, activeFilters.seccionalSelected, selectedRegion]);
+
+	const emAndamentoData = React.useMemo(() => groupByStatusFim(rowsForCharts, 'Em Andamento'), [rowsForCharts, groupByStatusFim]);
+	// Dados memorizados por gráfico
+	const emAndamentoQty = React.useMemo(() => emAndamentoData.map(d => ({ name: d.name, qtd: d.qtd })), [emAndamentoData])
+	const emAndamentoValue = React.useMemo(() => emAndamentoData.map(d => ({ name: d.name, value: d.value })), [emAndamentoData])
+	const concluidasData = React.useMemo(() => groupByStatusFim(rowsForCharts, 'Concluída'), [rowsForCharts, groupByStatusFim])
+	const concluidasQty = React.useMemo(() => concluidasData.map(d => ({ name: d.name, qtd: d.qtd })), [concluidasData])
+	const concluidasValue = React.useMemo(() => concluidasData.map(d => ({ name: d.name, value: d.value })), [concluidasData])
+	const paradasData = React.useMemo(() => groupByStatusFim(rowsForCharts, 'Parada'), [rowsForCharts, groupByStatusFim])
+	const paradasQty = React.useMemo(() => paradasData.map(d => ({ name: d.name, qtd: d.qtd })), [paradasData])
+	const paradasValue = React.useMemo(() => paradasData.map(d => ({ name: d.name, value: d.value })), [paradasData])
 	// Dados para Seccionais (dual-axis: PEP / Valor)
 	const seccionaisQty = React.useMemo(() => filteredData.comparison.map(d => ({ name: d.name, qtd: d.qtd })), [filteredData.comparison])
 	const seccionaisValue = React.useMemo(() => filteredData.comparison.map(d => ({ name: d.name, value: d.value })), [filteredData.comparison])
