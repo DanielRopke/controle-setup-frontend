@@ -844,10 +844,7 @@ export default function CarteiraObras() {
 				})
 				setRawRows(mapped as MatrizItem[])
 				try {
-					showToast(`Carteira de Obras (backend) Carregado: ${mapped.length} linhas`)
-					// soma total para conferência
-					const total = mapped.reduce((acc, r) => acc + (typeof r.valor === 'number' ? r.valor : 0), 0);
-					showToast(`Total carregado: R$ ${total.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`)
+					showToast(`Carteira de Obras Carregado: ${mapped.length} linhas`)
 				} catch (e) { console.debug(e) }
 			})
 			.catch((err) => {
@@ -1232,7 +1229,7 @@ export default function CarteiraObras() {
 										</ResponsiveContainer>
 									</ChartContainer>
 									{concluidasIndic ? (
-										<div className="-mt-2 px-2 text-sm text-gray-700 w-full flex items-center justify-center gap-4 flex-wrap">
+										<div className="flex flex-wrap items-center justify-center w-full gap-4 px-2 -mt-2 text-sm text-gray-700">
 											<span className="font-medium">{concluidasIndic.name}:</span>
 											<span className="flex items-center gap-2 cursor-pointer select-none" onClick={() => handleChartClick('statusConcluida', concluidasIndic.name)} title="Filtrar por esta categoria">
 												<span className="inline-block w-2.5 h-2.5 rounded-full" style={{ background: 'linear-gradient(180deg, hsl(142 90% 45%), hsl(142 76% 36%))' }} />
@@ -1331,7 +1328,7 @@ export default function CarteiraObras() {
 										</ResponsiveContainer>
 									</ChartContainer>
 								{paradasIndic ? (
-									<div className="-mt-2 px-2 text-sm text-gray-700 w-full flex items-center justify-center gap-4 flex-wrap">
+									<div className="flex flex-wrap items-center justify-center w-full gap-4 px-2 -mt-2 text-sm text-gray-700">
 										<span className="font-medium">{paradasIndic.name}:</span>
 										<span className="flex items-center gap-2 cursor-pointer select-none" onClick={() => handleChartClick('statusParada', paradasIndic.name)} title="Filtrar por esta categoria">
 											<span className="inline-block w-2.5 h-2.5 rounded-full" style={{ background: 'linear-gradient(180deg, hsl(142 90% 45%), hsl(142 76% 36%))' }} />
