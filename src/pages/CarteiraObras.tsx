@@ -1495,28 +1495,28 @@ export default function CarteiraObras() {
 								<Table>
 									<TableHeader>
 										<TableRow className="bg-gray-50 hover:bg-gray-100">
-													<TableHead className="font-semibold text-gray-700 transition-colors cursor-pointer select-none hover:bg-gray-200 w-[154px] text-center" onClick={() => handleSort('pep')}>
+													<TableHead className="font-semibold text-gray-700 transition-colors cursor-pointer select-none hover:bg-gray-200 w-[180px] text-center" onClick={() => handleSort('pep')}>
 														<div className="flex items-center justify-center gap-2">PEP {getSortIcon('pep')}</div>
 													</TableHead>
-												<TableHead className="font-semibold text-gray-700 transition-colors cursor-pointer select-none hover:bg-gray-200 text-center" onClick={() => handleSort('dataLimite')}>
+												<TableHead className="font-semibold text-center text-gray-700 transition-colors cursor-pointer select-none hover:bg-gray-200" onClick={() => handleSort('dataLimite')}>
 													<div className="flex items-center justify-center gap-2">Limite {getSortIcon('dataLimite')}</div>
 												</TableHead>
-												<TableHead className="font-semibold text-gray-700 transition-colors cursor-pointer select-none hover:bg-gray-200 text-center" onClick={() => handleSort('seccional')}>
+												<TableHead className="font-semibold text-center text-gray-700 transition-colors cursor-pointer select-none hover:bg-gray-200" onClick={() => handleSort('seccional')}>
 													<div className="flex items-center justify-center gap-2">Seccional {getSortIcon('seccional')}</div>
 												</TableHead>
-												<TableHead className="font-semibold text-gray-700 transition-colors cursor-pointer select-none hover:bg-gray-200 text-center" onClick={() => handleSort('municipio')}>
+												<TableHead className="font-semibold text-center text-gray-700 transition-colors cursor-pointer select-none hover:bg-gray-200" onClick={() => handleSort('municipio')}>
 													<div className="flex items-center justify-center gap-2">Município {getSortIcon('municipio')}</div>
 												</TableHead>
-												<TableHead className="font-semibold text-gray-700 transition-colors cursor-pointer select-none hover:bg-gray-200 text-center" onClick={() => handleSort('dataProgConc')}>
+												<TableHead className="font-semibold text-center text-gray-700 transition-colors cursor-pointer select-none hover:bg-gray-200" onClick={() => handleSort('dataProgConc')}>
 													<div className="flex items-center justify-center gap-2">Data {getSortIcon('dataProgConc')}</div>
 												</TableHead>
-												<TableHead className="font-semibold text-gray-700 transition-colors cursor-pointer select-none hover:bg-gray-200 text-center" onClick={() => handleSort('tipo')}>
+												<TableHead className="font-semibold text-center text-gray-700 transition-colors cursor-pointer select-none hover:bg-gray-200" onClick={() => handleSort('tipo')}>
 													<div className="flex items-center justify-center gap-2">Tipo {getSortIcon('tipo')}</div>
 												</TableHead>
-												<TableHead className="font-semibold text-gray-700 transition-colors cursor-pointer select-none hover:bg-gray-200 text-center" onClick={() => handleSort('status')}>
+												<TableHead className="font-semibold text-center text-gray-700 transition-colors cursor-pointer select-none hover:bg-gray-200" onClick={() => handleSort('status')}>
 													<div className="flex items-center justify-center gap-2">Status SAP {getSortIcon('status')}</div>
 												</TableHead>
-												<TableHead className="font-semibold text-gray-700 transition-colors cursor-pointer select-none hover:bg-gray-200 text-center" onClick={() => handleSort('rs')}>
+												<TableHead className="font-semibold text-center text-gray-700 transition-colors cursor-pointer select-none hover:bg-gray-200" onClick={() => handleSort('rs')}>
 													<div className="flex items-center justify-center gap-2">R$ {getSortIcon('rs')}</div>
 												</TableHead>
 											</TableRow>
@@ -1611,7 +1611,7 @@ export default function CarteiraObras() {
 											}}
 											title="Ctrl/Cmd+clique para selecionar múltiplas linhas. Clique com o botão direito para abrir menu de copiar"
 											>
-												<TableCell className="font-mono text-sm min-w-[132px]">{row.pep}</TableCell>
+												<TableCell className="font-mono text-sm min-w-[160px] whitespace-nowrap">{row.pep}</TableCell>
 												<TableCell className="text-sm">{formatToDDMMYY(row.dataLimite)}</TableCell>
 												<TableCell className="text-sm">{row.seccional}</TableCell>
 												<TableCell className="text-sm">{row.municipio}</TableCell>
