@@ -660,11 +660,7 @@ export default function CarteiraObras() {
 	const emAndamentoQty = React.useMemo(() => emAndamentoData.map(d => ({ name: d.name, qtd: d.qtd })), [emAndamentoData])
 	const emAndamentoValue = React.useMemo(() => emAndamentoData.map(d => ({ name: d.name, value: d.value })), [emAndamentoData])
 	const concluidasData = React.useMemo(() => groupByStatusFim(rowsForCharts, 'Concluída'), [rowsForCharts, groupByStatusFim])
-	const concluidasQty = React.useMemo(() => concluidasData.map(d => ({ name: d.name, qtd: d.qtd })), [concluidasData])
-	const concluidasValue = React.useMemo(() => concluidasData.map(d => ({ name: d.name, value: d.value })), [concluidasData])
 	const paradasData = React.useMemo(() => groupByStatusFim(rowsForCharts, 'Parada'), [rowsForCharts, groupByStatusFim])
-	const paradasQty = React.useMemo(() => paradasData.map(d => ({ name: d.name, qtd: d.qtd })), [paradasData])
-	const paradasValue = React.useMemo(() => paradasData.map(d => ({ name: d.name, value: d.value })), [paradasData])
 
 	// Indicadores para as categorias de referência: "Comissionado" (Concluídas) e "Cancelada" (Paradas)
 	const concluidasIndic = React.useMemo(() => {
@@ -681,6 +677,29 @@ export default function CarteiraObras() {
 			return nm.includes('cancelad')
 		})
 	}, [paradasData, normalize])
+
+	// Remover do gráfico as categorias destacadas nos indicadores
+	const concluidasChartData = React.useMemo(() => {
+		const nrm = (s: string) => normalize(s)
+		return concluidasData.filter(d => {
+			const nm = nrm(d.name)
+			// ocultar comissionado
+			return !(nm.includes('comission') || nm.includes('comiss'))
+		})
+	}, [concluidasData, normalize])
+	const concluidasChartQty = React.useMemo(() => concluidasChartData.map(d => ({ name: d.name, qtd: d.qtd })), [concluidasChartData])
+	const concluidasChartValue = React.useMemo(() => concluidasChartData.map(d => ({ name: d.name, value: d.value })), [concluidasChartData])
+
+	const paradasChartData = React.useMemo(() => {
+		const nrm = (s: string) => normalize(s)
+		return paradasData.filter(d => {
+			const nm = nrm(d.name)
+			// ocultar cancelada
+			return !nm.includes('cancelad')
+		})
+	}, [paradasData, normalize])
+	const paradasChartQty = React.useMemo(() => paradasChartData.map(d => ({ name: d.name, qtd: d.qtd })), [paradasChartData])
+	const paradasChartValue = React.useMemo(() => paradasChartData.map(d => ({ name: d.name, value: d.value })), [paradasChartData])
 	// Dados para Seccionais (dual-axis: PEP / Valor)
 	const seccionaisQty = React.useMemo(() => filteredData.comparison.map(d => ({ name: d.name, qtd: d.qtd })), [filteredData.comparison])
 	const seccionaisValue = React.useMemo(() => filteredData.comparison.map(d => ({ name: d.name, value: d.value })), [filteredData.comparison])
@@ -1144,7 +1163,7 @@ export default function CarteiraObras() {
 								<CardContent className="p-4">
 									<ChartContainer config={{ value: { label: "R$", color: "hsl(var(--primary))" } }} className="h-64 sm:h-72 md:h-80 lg:h-[calc((100vh-20rem)/2)] lg:max-h-[350px] w-full">
 										<ResponsiveContainer width="100%" height="100%">
-											<BarChart data={concluidasData} margin={{ top: 20, right: 10, bottom: 55, left: 10 }} barGap={6} barCategoryGap={16}>
+											<BarChart data={concluidasChartData} margin={{ top: 20, right: 10, bottom: 55, left: 10 }} barGap={6} barCategoryGap={16}>
 												<CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
 												<XAxis dataKey="name" fontSize={12} tickMargin={8} interval={0} tick={(props: unknown) => {
 													const p = props as ChartTickProps;
@@ -1169,30 +1188,30 @@ export default function CarteiraObras() {
 													}}
 												/>
 												<Bar yAxisId="left" dataKey="qtd" fill="url(#chartGreenGradientComparison)" radius={[8, 8, 0, 0]}>
-													{concluidasData.map((_entry, index) => {
+													{concluidasChartData.map((_entry, index) => {
 														const selected = activeFilters.statusConcluida;
-														const name = concluidasData[index]?.name || '';
+														const name = concluidasChartData[index]?.name || '';
 														const faded = selected && selected !== name;
 														return (
 															<Cell key={`cell-${index}`} fill={"url(#chartGreenGradientComparison)"} fillOpacity={faded ? 0.5 : 1} onClick={() => handleChartClick('statusConcluida', name)} />
 														)
 													})}
 													<LabelList dataKey="qtd" content={makeLabelRenderer(
-														concluidasQty,
+														concluidasChartQty,
 														() => false,
 													)} />
 												</Bar>
 												<Bar yAxisId="right" dataKey="value" fill="url(#chartBlueGradientValue)" radius={[8, 8, 0, 0]}>
-													{concluidasData.map((_entry, index) => {
+													{concluidasChartData.map((_entry, index) => {
 														const selected = activeFilters.statusConcluida;
-														const name = concluidasData[index]?.name || '';
+														const name = concluidasChartData[index]?.name || '';
 														const faded = selected && selected !== name;
 														return (
 															<Cell key={`cellv-${index}`} fill={"url(#chartBlueGradientValue)"} fillOpacity={faded ? 0.5 : 1} onClick={() => handleChartClick('statusConcluida', name)} />
 														)
 													})}
 													<LabelList dataKey="value" content={makeValueLabelRenderer(
-														concluidasValue,
+														concluidasChartValue,
 														() => false,
 													)} />
 												</Bar>
@@ -1215,11 +1234,11 @@ export default function CarteiraObras() {
 									{concluidasIndic ? (
 										<div className="-mt-2 px-2 text-sm text-gray-700 w-full flex items-center justify-center gap-4 flex-wrap">
 											<span className="font-medium">{concluidasIndic.name}:</span>
-											<span className="flex items-center gap-2">
+											<span className="flex items-center gap-2 cursor-pointer select-none" onClick={() => handleChartClick('statusConcluida', concluidasIndic.name)} title="Filtrar por esta categoria">
 												<span className="inline-block w-2.5 h-2.5 rounded-full" style={{ background: 'linear-gradient(180deg, hsl(142 90% 45%), hsl(142 76% 36%))' }} />
 												<span className="tabular-nums">{concluidasIndic.qtd.toLocaleString('pt-BR')} PEP</span>
 											</span>
-											<span className="flex items-center gap-2">
+											<span className="flex items-center gap-2 cursor-pointer select-none" onClick={() => handleChartClick('statusConcluida', concluidasIndic.name)} title="Filtrar por esta categoria">
 												<span className="inline-block w-2.5 h-2.5 rounded-full" style={{ background: 'linear-gradient(180deg, #3b82f6, #1e3a8a)' }} />
 												<span className="tabular-nums">{formatMilExtenso(concluidasIndic.value)}</span>
 											</span>
@@ -1243,7 +1262,7 @@ export default function CarteiraObras() {
 								<CardContent className="p-4">
 									<ChartContainer config={{ value: { label: "R$", color: "hsl(var(--primary))" } }} className="h-64 sm:h-72 md:h-80 lg:h-[calc((100vh-20rem)/2)] lg:max-h-[350px] w-full">
 										<ResponsiveContainer width="100%" height="100%">
-											<BarChart data={paradasData} margin={{ top: 20, right: 10, bottom: 55, left: 10 }} barGap={6} barCategoryGap={16}>
+											<BarChart data={paradasChartData} margin={{ top: 20, right: 10, bottom: 55, left: 10 }} barGap={6} barCategoryGap={16}>
 												<CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
 												<XAxis dataKey="name" fontSize={12} tickMargin={8} interval={0} tick={(props: unknown) => {
 													const p = props as ChartTickProps;
@@ -1268,30 +1287,30 @@ export default function CarteiraObras() {
 													}}
 												/>
 												<Bar yAxisId="left" dataKey="qtd" fill="url(#chartGreenGradientConc)" radius={[8, 8, 0, 0]}>
-													{paradasData.map((_entry, index) => {
+													{paradasChartData.map((_entry, index) => {
 														const selected = activeFilters.statusParada;
-														const name = paradasData[index]?.name || '';
+														const name = paradasChartData[index]?.name || '';
 														const faded = selected && selected !== name;
 														return (
 															<Cell key={`cell-${index}`} fill={"url(#chartGreenGradientConc)"} fillOpacity={faded ? 0.5 : 1} onClick={() => handleChartClick('statusParada', name)} />
 														)
 													})}
 													<LabelList dataKey="qtd" content={makeLabelRenderer(
-														paradasQty,
+														paradasChartQty,
 														() => false,
 													)} />
 												</Bar>
 												<Bar yAxisId="right" dataKey="value" fill="url(#chartBlueGradientValue)" radius={[8, 8, 0, 0]}>
-													{paradasData.map((_entry, index) => {
+													{paradasChartData.map((_entry, index) => {
 														const selected = activeFilters.statusParada;
-														const name = paradasData[index]?.name || '';
+														const name = paradasChartData[index]?.name || '';
 														const faded = selected && selected !== name;
 														return (
 															<Cell key={`cellv-${index}`} fill={"url(#chartBlueGradientValue)"} fillOpacity={faded ? 0.5 : 1} onClick={() => handleChartClick('statusParada', name)} />
 														)
 													})}
 													<LabelList dataKey="value" content={makeValueLabelRenderer(
-														paradasValue,
+														paradasChartValue,
 														() => false,
 													)} />
 												</Bar>
@@ -1314,11 +1333,11 @@ export default function CarteiraObras() {
 								{paradasIndic ? (
 									<div className="-mt-2 px-2 text-sm text-gray-700 w-full flex items-center justify-center gap-4 flex-wrap">
 										<span className="font-medium">{paradasIndic.name}:</span>
-										<span className="flex items-center gap-2">
+										<span className="flex items-center gap-2 cursor-pointer select-none" onClick={() => handleChartClick('statusParada', paradasIndic.name)} title="Filtrar por esta categoria">
 											<span className="inline-block w-2.5 h-2.5 rounded-full" style={{ background: 'linear-gradient(180deg, hsl(142 90% 45%), hsl(142 76% 36%))' }} />
 											<span className="tabular-nums">{paradasIndic.qtd.toLocaleString('pt-BR')} PEP</span>
 										</span>
-										<span className="flex items-center gap-2">
+										<span className="flex items-center gap-2 cursor-pointer select-none" onClick={() => handleChartClick('statusParada', paradasIndic.name)} title="Filtrar por esta categoria">
 											<span className="inline-block w-2.5 h-2.5 rounded-full" style={{ background: 'linear-gradient(180deg, #3b82f6, #1e3a8a)' }} />
 											<span className="tabular-nums">{formatMilExtenso(paradasIndic.value)}</span>
 										</span>
