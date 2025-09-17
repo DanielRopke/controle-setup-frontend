@@ -649,11 +649,44 @@ export default function CarteiraObras() {
 	// (helpers moved above)
 
 	// Filtrar linhas por Seccional selecionada (via sidebar ou clique no gráfico de Seccionais)
+	// Agora também aplica filtro de data (selectedStartDate / selectedEndDate) para que os gráficos respeitem o range
 	const rowsForCharts = React.useMemo(() => {
 		const regionFilter = (activeFilters.seccionalSelected || (selectedRegion !== 'all' ? selectedRegion : undefined)) as string | undefined;
-		if (!regionFilter) return rawRows;
-		return rawRows.filter(r => (r.seccional || '').trim() === regionFilter);
-	}, [rawRows, activeFilters.seccionalSelected, selectedRegion]);
+		let rows = rawRows;
+		if (regionFilter) rows = rows.filter(r => (r.seccional || '').trim() === regionFilter);
+
+		// aplicar filtro de data: considera 'prazo' e 'dataConclusao'
+		if (selectedStartDate || selectedEndDate) {
+			const toDate = (s: string): number => {
+				const m = s.trim().match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+				if (m) {
+					const d = Number(m[1]);
+					const mo = Number(m[2]) - 1;
+					const y = Number(m[3]);
+					return new Date(y, mo, d).getTime();
+				}
+				const t = Date.parse(s);
+				return Number.isNaN(t) ? Number.NaN : t;
+			};
+			const startTs = selectedStartDate ? new Date(selectedStartDate.getFullYear(), selectedStartDate.getMonth(), selectedStartDate.getDate()).getTime() : Number.NaN;
+			const endTs = selectedEndDate ? new Date(selectedEndDate.getFullYear(), selectedEndDate.getMonth(), selectedEndDate.getDate()).getTime() : Number.NaN;
+			rows = rows.filter(r => {
+				const dates: number[] = [];
+				const dl = String(r.prazo || '').trim();
+				const dp = String(r.dataConclusao || '').trim();
+				if (dl) dates.push(toDate(dl));
+				if (dp) dates.push(toDate(dp));
+				if (!dates.length) return false;
+				return dates.some(ts => {
+					const okStart = Number.isNaN(startTs) || ts >= startTs;
+					const okEnd = Number.isNaN(endTs) || ts <= endTs;
+					return okStart && okEnd;
+				});
+			});
+		}
+
+		return rows;
+	}, [rawRows, activeFilters.seccionalSelected, selectedRegion, selectedStartDate, selectedEndDate]);
 
 	const emAndamentoData = React.useMemo(() => groupByStatusFim(rowsForCharts, 'Em Andamento'), [rowsForCharts, groupByStatusFim]);
 	// Dados memorizados por gráfico
