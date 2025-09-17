@@ -636,46 +636,68 @@ export default function CarteiraObras() {
 	// (helpers moved above)
 
 	const emAndamentoData = React.useMemo(() => groupByStatusFim(rawRows, 'Em Andamento'), [rawRows, groupByStatusFim]);
-	const concluidasData = React.useMemo(() => {
+	// Concluídas: ordenar demais por valor (desc) e escalar alturas de valor
+	const concluidasPrepared = React.useMemo(() => {
 		const arr = groupByStatusFim(rawRows, 'Concluída').slice();
-		// mover "Comissionado(a)" para o fim
-		const matchStem = (s: string) => normalize(s).includes('comissionad');
-		const tail: typeof arr = [];
-		const head: typeof arr = [];
-		for (const it of arr) {
-			if (matchStem(it.name)) tail.push(it); else head.push(it);
+		const isComissionada = (s: string) => normalize(s).includes('comissionad');
+		const head = arr.filter(it => !isComissionada(it.name));
+		const tail = arr.filter(it => isComissionada(it.name));
+		// ordenar head por valor desc
+		head.sort((a, b) => (b.value || 0) - (a.value || 0));
+		const ordered = [...head, ...tail];
+		const dividerName = tail.length ? tail[0].name : null;
+		// escala das barras de valor: máx dos outros = 80% da Comissionada; mínimo = 10% da Comissionada
+		const Vc = tail.length ? (tail[0].value || 0) : 0;
+		let scaled = ordered.map(it => ({ ...it }));
+		if (Vc > 0) {
+			const vmax = head.length ? Math.max(...head.map(o => o.value || 0)) : 0;
+			const minVal = 0.1 * Vc; // 10%
+			const factor = vmax > 0 ? (0.8 * Vc) / vmax : 0; // 80%
+			scaled = ordered.map(it => {
+				if (isComissionada(it.name)) return it; // mantém valor original da Comissionada
+				const raw = it.value || 0;
+				const scaledVal = Math.max(minVal, factor > 0 ? raw * factor : raw);
+				return { ...it, value: scaledVal };
+			});
 		}
-		return [...head, ...tail];
+		return { ordered, scaled, dividerName };
 	}, [rawRows, groupByStatusFim, normalize]);
-	const paradasData = React.useMemo(() => {
+	// Paradas: ordenar demais por valor e escalar alturas relativas a 'Cancelada'
+	const paradasPrepared = React.useMemo(() => {
 		const arr = groupByStatusFim(rawRows, 'Parada').slice();
-		// mover "Cancelada(s)" para o fim
-		const matchStem = (s: string) => normalize(s).includes('cancelad');
-		const tail: typeof arr = [];
-		const head: typeof arr = [];
-		for (const it of arr) {
-			if (matchStem(it.name)) tail.push(it); else head.push(it);
+		const isCancelada = (s: string) => normalize(s).includes('cancelad');
+		const head = arr.filter(it => !isCancelada(it.name));
+		const tail = arr.filter(it => isCancelada(it.name));
+		head.sort((a, b) => (b.value || 0) - (a.value || 0));
+		const ordered = [...head, ...tail];
+		const dividerName = tail.length ? tail[0].name : null;
+		const Vc = tail.length ? (tail[0].value || 0) : 0;
+		let scaled = ordered.map(it => ({ ...it }));
+		if (Vc > 0) {
+			const vmax = head.length ? Math.max(...head.map(o => o.value || 0)) : 0;
+			const minVal = 0.1 * Vc;
+			const factor = vmax > 0 ? (0.8 * Vc) / vmax : 0;
+			scaled = ordered.map(it => {
+				if (isCancelada(it.name)) return it;
+				const raw = it.value || 0;
+				const scaledVal = Math.max(minVal, factor > 0 ? raw * factor : raw);
+				return { ...it, value: scaledVal };
+			});
 		}
-		return [...head, ...tail];
+		return { ordered, scaled, dividerName };
 	}, [rawRows, groupByStatusFim, normalize]);
 
 	// Nome da primeira coluna "final" (se existir) para desenhar um traço separador
-	const concluidasDividerName = React.useMemo(() => {
-		const idx = concluidasData.findIndex(it => normalize(it.name).includes('comissionad'));
-		return idx > 0 ? concluidasData[idx].name : null;
-	}, [concluidasData, normalize]);
-	const paradasDividerName = React.useMemo(() => {
-		const idx = paradasData.findIndex(it => normalize(it.name).includes('cancelad'));
-		return idx > 0 ? paradasData[idx].name : null;
-	}, [paradasData, normalize]);
+	const concluidasDividerName = React.useMemo(() => concluidasPrepared.dividerName, [concluidasPrepared]);
+	const paradasDividerName = React.useMemo(() => paradasPrepared.dividerName, [paradasPrepared]);
 
 	// Auxiliares tipadas para LabelList (evita uso de `any`)
 	const emAndamentoQty = React.useMemo(() => emAndamentoData.map(d => ({ name: d.name, qtd: d.qtd })), [emAndamentoData])
 	const emAndamentoValue = React.useMemo(() => emAndamentoData.map(d => ({ name: d.name, value: d.value })), [emAndamentoData])
-	const concluidasQty = React.useMemo(() => concluidasData.map(d => ({ name: d.name, qtd: d.qtd })), [concluidasData])
-	const concluidasValue = React.useMemo(() => concluidasData.map(d => ({ name: d.name, value: d.value })), [concluidasData])
-	const paradasQty = React.useMemo(() => paradasData.map(d => ({ name: d.name, qtd: d.qtd })), [paradasData])
-	const paradasValue = React.useMemo(() => paradasData.map(d => ({ name: d.name, value: d.value })), [paradasData])
+	const concluidasQty = React.useMemo(() => concluidasPrepared.ordered.map(d => ({ name: d.name, qtd: d.qtd })), [concluidasPrepared])
+	const concluidasValue = React.useMemo(() => concluidasPrepared.ordered.map(d => ({ name: d.name, value: d.value })), [concluidasPrepared])
+	const paradasQty = React.useMemo(() => paradasPrepared.ordered.map(d => ({ name: d.name, qtd: d.qtd })), [paradasPrepared])
+	const paradasValue = React.useMemo(() => paradasPrepared.ordered.map(d => ({ name: d.name, value: d.value })), [paradasPrepared])
 	// Dados para Seccionais (dual-axis: PEP / Valor)
 	const seccionaisQty = React.useMemo(() => filteredData.comparison.map(d => ({ name: d.name, qtd: d.qtd })), [filteredData.comparison])
 	const seccionaisValue = React.useMemo(() => filteredData.comparison.map(d => ({ name: d.name, value: d.value })), [filteredData.comparison])
@@ -1139,7 +1161,7 @@ export default function CarteiraObras() {
 								<CardContent className="p-4">
 									<ChartContainer config={{ value: { label: "R$", color: "hsl(var(--primary))" } }} className="h-64 sm:h-72 md:h-80 lg:h-[calc((100vh-20rem)/2)] lg:max-h-[350px] w-full">
 										<ResponsiveContainer width="100%" height="100%">
-											<BarChart data={concluidasData} margin={{ top: 20, right: 10, bottom: 55, left: 10 }} barGap={6} barCategoryGap={16}>
+											<BarChart data={concluidasPrepared.scaled} margin={{ top: 20, right: 10, bottom: 55, left: 10 }} barGap={6} barCategoryGap={16}>
 												<CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
 												<XAxis dataKey="name" fontSize={12} tickMargin={8} interval={0} tick={(props: unknown) => {
 													const p = props as ChartTickProps;
@@ -1167,9 +1189,9 @@ export default function CarteiraObras() {
 													}}
 												/>
 												<Bar yAxisId="left" dataKey="qtd" fill="url(#chartGreenGradientComparison)" radius={[8, 8, 0, 0]}>
-													{concluidasData.map((_entry, index) => {
+													{concluidasPrepared.scaled.map((_entry, index) => {
 														const selected = activeFilters.statusConcluida;
-														const name = concluidasData[index]?.name || '';
+														const name = concluidasPrepared.scaled[index]?.name || '';
 														const faded = selected && selected !== name;
 														return (
 															<Cell key={`cell-${index}`} fill={"url(#chartGreenGradientComparison)"} fillOpacity={faded ? 0.5 : 1} onClick={() => handleChartClick('statusConcluida', name)} />
@@ -1181,9 +1203,9 @@ export default function CarteiraObras() {
 													)} />
 												</Bar>
 												<Bar yAxisId="right" dataKey="value" fill="url(#chartBlueGradientValue)" radius={[8, 8, 0, 0]}>
-													{concluidasData.map((_entry, index) => {
+													{concluidasPrepared.scaled.map((_entry, index) => {
 														const selected = activeFilters.statusConcluida;
-														const name = concluidasData[index]?.name || '';
+														const name = concluidasPrepared.scaled[index]?.name || '';
 														const faded = selected && selected !== name;
 														return (
 															<Cell key={`cellv-${index}`} fill={"url(#chartBlueGradientValue)"} fillOpacity={faded ? 0.5 : 1} onClick={() => handleChartClick('statusConcluida', name)} />
@@ -1227,7 +1249,7 @@ export default function CarteiraObras() {
 								<CardContent className="p-4">
 									<ChartContainer config={{ value: { label: "R$", color: "hsl(var(--primary))" } }} className="h-64 sm:h-72 md:h-80 lg:h-[calc((100vh-20rem)/2)] lg:max-h-[350px] w-full">
 										<ResponsiveContainer width="100%" height="100%">
-											<BarChart data={paradasData} margin={{ top: 20, right: 10, bottom: 55, left: 10 }} barGap={6} barCategoryGap={16}>
+											<BarChart data={paradasPrepared.scaled} margin={{ top: 20, right: 10, bottom: 55, left: 10 }} barGap={6} barCategoryGap={16}>
 												<CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
 												<XAxis dataKey="name" fontSize={12} tickMargin={8} interval={0} tick={(props: unknown) => {
 													const p = props as ChartTickProps;
@@ -1255,9 +1277,9 @@ export default function CarteiraObras() {
 													}}
 												/>
 												<Bar yAxisId="left" dataKey="qtd" fill="url(#chartGreenGradientConc)" radius={[8, 8, 0, 0]}>
-													{paradasData.map((_entry, index) => {
+													{paradasPrepared.scaled.map((_entry, index) => {
 														const selected = activeFilters.statusParada;
-														const name = paradasData[index]?.name || '';
+														const name = paradasPrepared.scaled[index]?.name || '';
 														const faded = selected && selected !== name;
 														return (
 															<Cell key={`cell-${index}`} fill={"url(#chartGreenGradientConc)"} fillOpacity={faded ? 0.5 : 1} onClick={() => handleChartClick('statusParada', name)} />
@@ -1269,9 +1291,9 @@ export default function CarteiraObras() {
 													)} />
 												</Bar>
 												<Bar yAxisId="right" dataKey="value" fill="url(#chartBlueGradientValue)" radius={[8, 8, 0, 0]}>
-													{paradasData.map((_entry, index) => {
+													{paradasPrepared.scaled.map((_entry, index) => {
 														const selected = activeFilters.statusParada;
-														const name = paradasData[index]?.name || '';
+														const name = paradasPrepared.scaled[index]?.name || '';
 														const faded = selected && selected !== name;
 														return (
 															<Cell key={`cellv-${index}`} fill={"url(#chartBlueGradientValue)"} fillOpacity={faded ? 0.5 : 1} onClick={() => handleChartClick('statusParada', name)} />
