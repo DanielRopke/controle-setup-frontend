@@ -322,7 +322,9 @@ export default function CarteiraObras() {
 		const active = item ? isActive(item.name) : false;
 		const cx = Number(x) + Number(width) / 2;
 		const cy = Number(y) - 6;
-		const v = Number(value) || 0;
+		// Mostrar SEMPRE o valor original (não escalado) vindo de dataArr,
+		// mesmo que a altura da barra use dados escalados.
+		const v = Number(item?.value ?? value ?? 0) || 0;
 		return (
 			<text
 				x={cx}
@@ -1175,7 +1177,7 @@ export default function CarteiraObras() {
 												<YAxis yAxisId="left" hide domain={[0, 'dataMax']} />
 												<YAxis yAxisId="right" orientation="right" hide domain={[0, 'dataMax']} />
 												{concluidasDividerName ? (
-													<ReferenceLine x={concluidasDividerName} stroke="hsl(var(--border))" strokeDasharray="4 4" strokeOpacity={0.8} />
+													<ReferenceLine x={concluidasDividerName} stroke="hsl(var(--border))" strokeDasharray="4 4" strokeOpacity={1} strokeWidth={2} />
 												) : null}
 												<Tooltip
 													contentStyle={{ backgroundColor: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: '8px', boxShadow: 'var(--shadow-elegant)' }}
@@ -1263,7 +1265,7 @@ export default function CarteiraObras() {
 												<YAxis yAxisId="left" hide domain={[0, 'dataMax']} />
 												<YAxis yAxisId="right" orientation="right" hide domain={[0, 'dataMax']} />
 												{paradasDividerName ? (
-													<ReferenceLine x={paradasDividerName} stroke="hsl(var(--border))" strokeDasharray="4 4" strokeOpacity={0.8} />
+													<ReferenceLine x={paradasDividerName} stroke="hsl(var(--border))" strokeDasharray="4 4" strokeOpacity={1} strokeWidth={2} />
 												) : null}
 												<Tooltip
 													contentStyle={{ backgroundColor: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: '8px', boxShadow: 'var(--shadow-elegant)' }}
