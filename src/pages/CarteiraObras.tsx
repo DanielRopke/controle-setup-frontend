@@ -1477,9 +1477,9 @@ export default function CarteiraObras() {
 								<Table>
 									<TableHeader>
 										<TableRow className="bg-gray-50 hover:bg-gray-100">
-												<TableHead className="font-semibold text-gray-700 transition-colors cursor-pointer select-none hover:bg-gray-200" onClick={() => handleSort('pep')}>
-													<div className="flex items-center gap-2">PEP {getSortIcon('pep')}</div>
-												</TableHead>
+														<TableHead className="font-semibold text-gray-700 transition-colors cursor-pointer select-none hover:bg-gray-200 w-[140px]" onClick={() => handleSort('pep')}>
+															<div className="flex items-center gap-2">PEP {getSortIcon('pep')}</div>
+														</TableHead>
 												<TableHead className="font-semibold text-gray-700 transition-colors cursor-pointer select-none hover:bg-gray-200" onClick={() => handleSort('dataLimite')}>
 													<div className="flex items-center gap-2">Data limite {getSortIcon('dataLimite')}</div>
 												</TableHead>
@@ -1593,7 +1593,7 @@ export default function CarteiraObras() {
 											}}
 											title="Ctrl/Cmd+clique para selecionar múltiplas linhas. Clique com o botão direito para abrir menu de copiar"
 											>
-												<TableCell className="font-mono text-sm">{row.pep}</TableCell>
+												<TableCell className="font-mono text-sm min-w-[120px]">{row.pep}</TableCell>
 												<TableCell className="text-sm">{row.dataLimite}</TableCell>
 												<TableCell className="text-sm">{row.seccional}</TableCell>
 												<TableCell className="text-sm">{row.municipio}</TableCell>
@@ -1604,7 +1604,7 @@ export default function CarteiraObras() {
 														{row.status}
 													</span>
 												</TableCell>
-												<TableCell className="font-semibold">R$ {row.rs.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
+												<TableCell className="font-semibold">R$ {Math.round(row.rs).toLocaleString('pt-BR')}</TableCell>
 											</TableRow>
 										))}
 									</TableBody>
