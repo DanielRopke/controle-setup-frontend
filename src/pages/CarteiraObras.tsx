@@ -1177,9 +1177,9 @@ export default function CarteiraObras() {
 												</Bar>
 												<Bar yAxisId="right" dataKey="value" fill="url(#chartBlueGradientValue)" radius={[8, 8, 0, 0]}>
 													{emAndamentoData.map((_entry, index) => {
-														const selected = activeFilters.statusEmAndamento;
+														const globalSelected = activeFilters.statusEmAndamento || activeFilters.statusConcluida || activeFilters.statusParada;
 														const name = emAndamentoData[index]?.name || '';
-														const faded = selected && selected !== name;
+														const faded = globalSelected && (activeFilters.statusEmAndamento ? activeFilters.statusEmAndamento !== name : true);
 														return (
 															<Cell key={`cellv-${index}`} fill={"url(#chartBlueGradientValue)"} fillOpacity={faded ? 0.5 : 1} onClick={() => handleChartClick('statusEmAndamento', name)} />
 														)
@@ -1262,9 +1262,9 @@ export default function CarteiraObras() {
 												</Bar>
 												<Bar yAxisId="right" dataKey="value" fill="url(#chartBlueGradientValue)" radius={[8, 8, 0, 0]}>
 													{concluidasChartData.map((_entry, index) => {
-														const selected = activeFilters.statusConcluida;
+														const globalSelected = activeFilters.statusEmAndamento || activeFilters.statusConcluida || activeFilters.statusParada;
 														const name = concluidasChartData[index]?.name || '';
-														const faded = selected && selected !== name;
+														const faded = globalSelected && (activeFilters.statusConcluida ? activeFilters.statusConcluida !== name : true);
 														return (
 															<Cell key={`cellv-${index}`} fill={"url(#chartBlueGradientValue)"} fillOpacity={faded ? 0.5 : 1} onClick={() => handleChartClick('statusConcluida', name)} />
 														)
@@ -1361,9 +1361,9 @@ export default function CarteiraObras() {
 												</Bar>
 												<Bar yAxisId="right" dataKey="value" fill="url(#chartBlueGradientValue)" radius={[8, 8, 0, 0]}>
 													{paradasChartData.map((_entry, index) => {
-														const selected = activeFilters.statusParada;
+														const globalSelected = activeFilters.statusEmAndamento || activeFilters.statusConcluida || activeFilters.statusParada;
 														const name = paradasChartData[index]?.name || '';
-														const faded = selected && selected !== name;
+														const faded = globalSelected && (activeFilters.statusParada ? activeFilters.statusParada !== name : true);
 														return (
 															<Cell key={`cellv-${index}`} fill={"url(#chartBlueGradientValue)"} fillOpacity={faded ? 0.5 : 1} onClick={() => handleChartClick('statusParada', name)} />
 														)
