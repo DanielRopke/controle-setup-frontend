@@ -34,6 +34,7 @@ type BarLabelProps = {
 	x?: number | string;
 	y?: number | string;
 	width?: number | string;
+	height?: number | string;
 	value?: number | string;
 	index?: number;
 };
@@ -279,6 +280,10 @@ export default function CarteiraObras() {
 		return `R$ ${numberFmt2.format(n)}`;
 	};
 
+	// Fatores de escala visuais
+	const MAX_RATIO = 0.65; // 65% da coluna de referência
+	const MIN_RATIO = 0.10; // 10% da coluna de referência
+
 	// Parsing de moeda robusto (aceita formatos BR e US; remove ruídos)
 	const parseMoneyToNumber = React.useCallback((input: unknown): number => {
 		if (typeof input === 'number' && Number.isFinite(input)) return input;
@@ -348,7 +353,7 @@ export default function CarteiraObras() {
 		const v = (obj as Record<string, unknown>)[key]
 		if (v == null) return ''
 		return String(v).trim()
-	}, [parseMoneyToNumber])
+	}, [])
 	const getFieldNumber = React.useCallback((obj: Record<string, unknown> | MatrizItem, key: string) => {
 		if (obj == null) return 0;
 		if (!Object.prototype.hasOwnProperty.call(obj, key)) return 0;
@@ -648,18 +653,24 @@ export default function CarteiraObras() {
 		head.sort((a, b) => (b.value || 0) - (a.value || 0));
 		const ordered = [...head, ...tail];
 		const dividerName = tail.length ? tail[0].name : null;
-		// escala das barras de valor: máx dos outros = 80% da Comissionada; mínimo = 10% da Comissionada
+		// escala visual das barras (valor e qtd) relativa à Comissionada
 		const Vc = tail.length ? (tail[0].value || 0) : 0;
-		let scaled = ordered.map(it => ({ ...it }));
-		if (Vc > 0) {
+		const Qc = tail.length ? (tail[0].qtd || 0) : 0;
+		let scaled = ordered.map(it => ({ ...it } as { name: string; value: number; qtd: number; valueScaled?: number; qtdScaled?: number }));
+		if (Vc > 0 || Qc > 0) {
 			const vmax = head.length ? Math.max(...head.map(o => o.value || 0)) : 0;
-			const minVal = 0.1 * Vc; // 10%
-			const factor = vmax > 0 ? (0.8 * Vc) / vmax : 0; // 80%
+			const qmax = head.length ? Math.max(...head.map(o => o.qtd || 0)) : 0;
+			const minVal = MIN_RATIO * Vc;
+			const minQtd = MIN_RATIO * Qc;
+			const factorV = vmax > 0 && Vc > 0 ? (MAX_RATIO * Vc) / vmax : 0;
+			const factorQ = qmax > 0 && Qc > 0 ? (MAX_RATIO * Qc) / qmax : 0;
 			scaled = ordered.map(it => {
-				if (isComissionada(it.name)) return it; // mantém valor original da Comissionada
-				const raw = it.value || 0;
-				const scaledVal = Math.max(minVal, factor > 0 ? raw * factor : raw);
-				return { ...it, value: scaledVal };
+				const isRef = isComissionada(it.name);
+				const rawV = it.value || 0;
+				const rawQ = it.qtd || 0;
+				const valueScaled = isRef ? rawV : Math.max(minVal, factorV > 0 ? rawV * factorV : rawV);
+				const qtdScaled = isRef ? rawQ : Math.max(minQtd, factorQ > 0 ? rawQ * factorQ : rawQ);
+				return { ...it, valueScaled, qtdScaled };
 			});
 		}
 		return { ordered, scaled, dividerName };
@@ -673,17 +684,24 @@ export default function CarteiraObras() {
 		head.sort((a, b) => (b.value || 0) - (a.value || 0));
 		const ordered = [...head, ...tail];
 		const dividerName = tail.length ? tail[0].name : null;
+		// escala visual de valor e qtd relativa à Cancelada
 		const Vc = tail.length ? (tail[0].value || 0) : 0;
-		let scaled = ordered.map(it => ({ ...it }));
-		if (Vc > 0) {
+		const Qc = tail.length ? (tail[0].qtd || 0) : 0;
+		let scaled = ordered.map(it => ({ ...it } as { name: string; value: number; qtd: number; valueScaled?: number; qtdScaled?: number }));
+		if (Vc > 0 || Qc > 0) {
 			const vmax = head.length ? Math.max(...head.map(o => o.value || 0)) : 0;
-			const minVal = 0.1 * Vc;
-			const factor = vmax > 0 ? (0.8 * Vc) / vmax : 0;
+			const qmax = head.length ? Math.max(...head.map(o => o.qtd || 0)) : 0;
+			const minVal = MIN_RATIO * Vc;
+			const minQtd = MIN_RATIO * Qc;
+			const factorV = vmax > 0 && Vc > 0 ? (MAX_RATIO * Vc) / vmax : 0;
+			const factorQ = qmax > 0 && Qc > 0 ? (MAX_RATIO * Qc) / qmax : 0;
 			scaled = ordered.map(it => {
-				if (isCancelada(it.name)) return it;
-				const raw = it.value || 0;
-				const scaledVal = Math.max(minVal, factor > 0 ? raw * factor : raw);
-				return { ...it, value: scaledVal };
+				const isRef = isCancelada(it.name);
+				const rawV = it.value || 0;
+				const rawQ = it.qtd || 0;
+				const valueScaled = isRef ? rawV : Math.max(minVal, factorV > 0 ? rawV * factorV : rawV);
+				const qtdScaled = isRef ? rawQ : Math.max(minQtd, factorQ > 0 ? rawQ * factorQ : rawQ);
+				return { ...it, valueScaled, qtdScaled };
 			});
 		}
 		return { ordered, scaled, dividerName };
@@ -696,10 +714,7 @@ export default function CarteiraObras() {
 	// Auxiliares tipadas para LabelList (evita uso de `any`)
 	const emAndamentoQty = React.useMemo(() => emAndamentoData.map(d => ({ name: d.name, qtd: d.qtd })), [emAndamentoData])
 	const emAndamentoValue = React.useMemo(() => emAndamentoData.map(d => ({ name: d.name, value: d.value })), [emAndamentoData])
-	const concluidasQty = React.useMemo(() => concluidasPrepared.ordered.map(d => ({ name: d.name, qtd: d.qtd })), [concluidasPrepared])
-	const concluidasValue = React.useMemo(() => concluidasPrepared.ordered.map(d => ({ name: d.name, value: d.value })), [concluidasPrepared])
-	const paradasQty = React.useMemo(() => paradasPrepared.ordered.map(d => ({ name: d.name, qtd: d.qtd })), [paradasPrepared])
-	const paradasValue = React.useMemo(() => paradasPrepared.ordered.map(d => ({ name: d.name, value: d.value })), [paradasPrepared])
+	// Dados originais para Concluídas/Paradas agora são lidos direto de *.ordered, evitando memos separados
 	// Dados para Seccionais (dual-axis: PEP / Valor)
 	const seccionaisQty = React.useMemo(() => filteredData.comparison.map(d => ({ name: d.name, qtd: d.qtd })), [filteredData.comparison])
 	const seccionaisValue = React.useMemo(() => filteredData.comparison.map(d => ({ name: d.name, value: d.value })), [filteredData.comparison])
@@ -855,7 +870,7 @@ export default function CarteiraObras() {
 				try { showToast('Erro ao carregar Carteira de Obras via backend') } catch (e) { console.debug(e) }
 			})
 		return () => { cancelled = true }
-	}, [])
+	}, [parseMoneyToNumber])
 
 	// Copiar imagem
 	const copyChartImage = async (chartRef: React.RefObject<HTMLDivElement | null>, chartName: string) => {
@@ -1163,7 +1178,7 @@ export default function CarteiraObras() {
 								<CardContent className="p-4">
 									<ChartContainer config={{ value: { label: "R$", color: "hsl(var(--primary))" } }} className="h-64 sm:h-72 md:h-80 lg:h-[calc((100vh-20rem)/2)] lg:max-h-[350px] w-full">
 										<ResponsiveContainer width="100%" height="100%">
-											<BarChart data={concluidasPrepared.scaled} margin={{ top: 20, right: 10, bottom: 55, left: 10 }} barGap={6} barCategoryGap={16}>
+											<BarChart data={concluidasPrepared.scaled} margin={{ top: 20, right: 10, bottom: 55, left: 10 }} barGap={10} barCategoryGap={18}>
 												<CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
 												<XAxis dataKey="name" fontSize={12} tickMargin={8} interval={0} tick={(props: unknown) => {
 													const p = props as ChartTickProps;
@@ -1175,7 +1190,6 @@ export default function CarteiraObras() {
 													);
 												}} />
 												<YAxis yAxisId="left" hide domain={[0, 'dataMax']} />
-												<YAxis yAxisId="right" orientation="right" hide domain={[0, 'dataMax']} />
 												{concluidasDividerName ? (
 													<ReferenceLine x={concluidasDividerName} stroke="hsl(var(--border))" strokeDasharray="4 4" strokeOpacity={1} strokeWidth={2} />
 												) : null}
@@ -1190,7 +1204,7 @@ export default function CarteiraObras() {
 														return [num.toLocaleString('pt-BR'), 'PEP'];
 													}}
 												/>
-												<Bar yAxisId="left" dataKey="qtd" fill="url(#chartGreenGradientComparison)" radius={[8, 8, 0, 0]}>
+												<Bar yAxisId="left" dataKey="qtdScaled" stackId="s1" fill="url(#chartGreenGradientComparison)" radius={[8, 8, 0, 0]}>
 													{concluidasPrepared.scaled.map((_entry, index) => {
 														const selected = activeFilters.statusConcluida;
 														const name = concluidasPrepared.scaled[index]?.name || '';
@@ -1199,12 +1213,19 @@ export default function CarteiraObras() {
 															<Cell key={`cell-${index}`} fill={"url(#chartGreenGradientComparison)"} fillOpacity={faded ? 0.5 : 1} onClick={() => handleChartClick('statusConcluida', name)} />
 														)
 													})}
-													<LabelList dataKey="qtd" content={makeLabelRenderer(
-														concluidasQty,
-														() => false,
-													)} />
+													<LabelList dataKey="qtdScaled" content={(props: BarLabelProps) => {
+														const { x = 0, y = 0, width = 0, height = 0, index = 0 } = props || {} as BarLabelProps;
+														const item = concluidasPrepared.ordered[index];
+														const cx = Number(x) + Number(width)/2;
+														const cy = Number(y) + Number(height)/2 + 4;
+														return (
+															<text x={cx} y={cy} textAnchor="middle" fill="#fff" fontWeight={700} fontSize={12} style={{ pointerEvents: 'none' }}>
+																{String(item?.qtd ?? '')}
+															</text>
+														);
+													}} />
 												</Bar>
-												<Bar yAxisId="right" dataKey="value" fill="url(#chartBlueGradientValue)" radius={[8, 8, 0, 0]}>
+												<Bar yAxisId="left" dataKey="valueScaled" stackId="s1" fill="url(#chartBlueGradientValue)" radius={[8, 8, 0, 0]}>
 													{concluidasPrepared.scaled.map((_entry, index) => {
 														const selected = activeFilters.statusConcluida;
 														const name = concluidasPrepared.scaled[index]?.name || '';
@@ -1213,10 +1234,18 @@ export default function CarteiraObras() {
 															<Cell key={`cellv-${index}`} fill={"url(#chartBlueGradientValue)"} fillOpacity={faded ? 0.5 : 1} onClick={() => handleChartClick('statusConcluida', name)} />
 														)
 													})}
-													<LabelList dataKey="value" content={makeValueLabelRenderer(
-														concluidasValue,
-														() => false,
-													)} />
+													<LabelList dataKey="valueScaled" content={(props: BarLabelProps) => {
+														const { x = 0, y = 0, width = 0, height = 0, index = 0 } = props || {} as BarLabelProps;
+														const item = concluidasPrepared.ordered[index];
+														const cx = Number(x) + Number(width)/2;
+														const cy = Number(y) + Number(height)/2 + 4;
+														const v = Number(item?.value ?? 0);
+														return (
+															<text x={cx} y={cy} textAnchor="middle" fill="#fff" fontWeight={700} fontSize={12} style={{ pointerEvents: 'none' }}>
+																{formatValorShort(v)}
+															</text>
+														);
+													}} />
 												</Bar>
 												<defs>
 													<linearGradient id="chartGreenGradientComparison" x1="0" y1="0" x2="0" y2="1">
@@ -1251,7 +1280,7 @@ export default function CarteiraObras() {
 								<CardContent className="p-4">
 									<ChartContainer config={{ value: { label: "R$", color: "hsl(var(--primary))" } }} className="h-64 sm:h-72 md:h-80 lg:h-[calc((100vh-20rem)/2)] lg:max-h-[350px] w-full">
 										<ResponsiveContainer width="100%" height="100%">
-											<BarChart data={paradasPrepared.scaled} margin={{ top: 20, right: 10, bottom: 55, left: 10 }} barGap={6} barCategoryGap={16}>
+											<BarChart data={paradasPrepared.scaled} margin={{ top: 20, right: 10, bottom: 55, left: 10 }} barGap={10} barCategoryGap={18}>
 												<CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
 												<XAxis dataKey="name" fontSize={12} tickMargin={8} interval={0} tick={(props: unknown) => {
 													const p = props as ChartTickProps;
@@ -1263,7 +1292,6 @@ export default function CarteiraObras() {
 													);
 												}} />
 												<YAxis yAxisId="left" hide domain={[0, 'dataMax']} />
-												<YAxis yAxisId="right" orientation="right" hide domain={[0, 'dataMax']} />
 												{paradasDividerName ? (
 													<ReferenceLine x={paradasDividerName} stroke="hsl(var(--border))" strokeDasharray="4 4" strokeOpacity={1} strokeWidth={2} />
 												) : null}
@@ -1278,7 +1306,7 @@ export default function CarteiraObras() {
 														return [num.toLocaleString('pt-BR'), 'PEP'];
 													}}
 												/>
-												<Bar yAxisId="left" dataKey="qtd" fill="url(#chartGreenGradientConc)" radius={[8, 8, 0, 0]}>
+												<Bar yAxisId="left" dataKey="qtdScaled" stackId="s1" fill="url(#chartGreenGradientConc)" radius={[8, 8, 0, 0]}>
 													{paradasPrepared.scaled.map((_entry, index) => {
 														const selected = activeFilters.statusParada;
 														const name = paradasPrepared.scaled[index]?.name || '';
@@ -1287,12 +1315,19 @@ export default function CarteiraObras() {
 															<Cell key={`cell-${index}`} fill={"url(#chartGreenGradientConc)"} fillOpacity={faded ? 0.5 : 1} onClick={() => handleChartClick('statusParada', name)} />
 														)
 													})}
-													<LabelList dataKey="qtd" content={makeLabelRenderer(
-														paradasQty,
-														() => false,
-													)} />
+													<LabelList dataKey="qtdScaled" content={(props: BarLabelProps) => {
+														const { x = 0, y = 0, width = 0, height = 0, index = 0 } = props || {} as BarLabelProps;
+														const item = paradasPrepared.ordered[index];
+														const cx = Number(x) + Number(width)/2;
+														const cy = Number(y) + Number(height)/2 + 4;
+														return (
+															<text x={cx} y={cy} textAnchor="middle" fill="#fff" fontWeight={700} fontSize={12} style={{ pointerEvents: 'none' }}>
+																{String(item?.qtd ?? '')}
+															</text>
+														);
+													}} />
 												</Bar>
-												<Bar yAxisId="right" dataKey="value" fill="url(#chartBlueGradientValue)" radius={[8, 8, 0, 0]}>
+												<Bar yAxisId="left" dataKey="valueScaled" stackId="s1" fill="url(#chartBlueGradientValue)" radius={[8, 8, 0, 0]}>
 													{paradasPrepared.scaled.map((_entry, index) => {
 														const selected = activeFilters.statusParada;
 														const name = paradasPrepared.scaled[index]?.name || '';
@@ -1301,10 +1336,18 @@ export default function CarteiraObras() {
 															<Cell key={`cellv-${index}`} fill={"url(#chartBlueGradientValue)"} fillOpacity={faded ? 0.5 : 1} onClick={() => handleChartClick('statusParada', name)} />
 														)
 													})}
-													<LabelList dataKey="value" content={makeValueLabelRenderer(
-														paradasValue,
-														() => false,
-													)} />
+													<LabelList dataKey="valueScaled" content={(props: BarLabelProps) => {
+														const { x = 0, y = 0, width = 0, height = 0, index = 0 } = props || {} as BarLabelProps;
+														const item = paradasPrepared.ordered[index];
+														const cx = Number(x) + Number(width)/2;
+														const cy = Number(y) + Number(height)/2 + 4;
+														const v = Number(item?.value ?? 0);
+														return (
+															<text x={cx} y={cy} textAnchor="middle" fill="#fff" fontWeight={700} fontSize={12} style={{ pointerEvents: 'none' }}>
+																{formatValorShort(v)}
+															</text>
+														);
+													}} />
 												</Bar>
 												<defs>
 													<linearGradient id="chartGreenGradientConc" x1="0" y1="0" x2="0" y2="1">
